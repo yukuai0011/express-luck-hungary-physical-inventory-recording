@@ -186,6 +186,16 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget _pill(String label, bool ok) {
+    final bg = ok ? Colors.green.shade700 : Colors.grey.shade700;
+    final text = ok ? 'ready' : 'missing';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
+      child: Text('$label: $text', style: const TextStyle(color: Colors.white)),
+    );
+  }
+
   Widget _buildWorkCard(Map<String, dynamic>? profile) {
     return Card(
       child: Padding(
