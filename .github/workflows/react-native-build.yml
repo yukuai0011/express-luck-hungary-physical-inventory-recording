@@ -38,7 +38,7 @@ jobs:
         run: |
           npm install --no-audit --no-fund
           npm install nativewind tailwindcss tailwindcss-react-native classnames @react-native-async-storage/async-storage react-native-permissions --save
-          npm install react-native-vision-camera@3.8.1 @mgcrea/vision-camera-barcode-scanner@0.10.1 react-native-worklets-core --save
+          npm install react-native-vision-camera@3.9.2 @mgcrea/vision-camera-barcode-scanner@0.10.1 react-native-worklets-core --save
 
       - name: Copy source and configs
         run: node ci/setup.js ExpressLuckInventory
@@ -89,7 +89,7 @@ jobs:
         run: |
           npm install --no-audit --no-fund
           npm install nativewind tailwindcss tailwindcss-react-native classnames @react-native-async-storage/async-storage react-native-permissions --save
-          npm install react-native-vision-camera@3.8.1 @mgcrea/vision-camera-barcode-scanner@0.10.1 react-native-worklets-core --save
+          npm install react-native-vision-camera@3.9.2 @mgcrea/vision-camera-barcode-scanner@0.10.1 react-native-worklets-core --save
         shell: pwsh
 
       - name: Add React Native Windows (0.73)
