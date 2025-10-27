@@ -23,8 +23,11 @@ async function copyDir(srcDir, dstDir) {
 async function ensureBabelPlugin(appDir) {
   const babelPath = path.join(appDir, 'babel.config.js');
   let content = await fsp.readFile(babelPath, 'utf8');
-  if (!content.includes('nativewind/babel')) {
-    content = content.replace(/presets:\s*\[[^\]]*\]/, (m) => m + ",\n  plugins: ['nativewind/babel']");
+  const plugins = [];
+  if (!content.includes('nativewind/babel')) plugins.push("'nativewind/babel'");
+  if (!content.includes('react-native-worklets-core/plugin')) plugins.push("'react-native-worklets-core/plugin'");
+  if (plugins.length > 0) {
+    content = content.replace(/presets:\s*\[[^\]]*\]/, (m) => m + ",\n  plugins: [" + plugins.join(', ') + "]");
     await fsp.writeFile(babelPath, content, 'utf8');
   }
 }
