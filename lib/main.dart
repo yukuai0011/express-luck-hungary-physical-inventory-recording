@@ -21,7 +21,7 @@ Future<void> main() async {
   final sessions = Hive.box<Map>(kBoxSessions);
   if (sessions.isEmpty) {
     await sessions.add({
-      'id': UniqueKey().toString(),
+      'id': _newId(),
       'name': 'Default',
       'createdAt': DateTime.now().toIso8601String(),
     });
@@ -106,10 +106,15 @@ class SessionsPage extends StatelessWidget {
                       }
                       await entriesBox.deleteAll(toDelete);
                       // Delete session itself
-                      final delKey = box.keys.firstWhere((k) => box.get(k)?['id'] == sessionId, orElse: () => null);
-                      if (delKey != null) {
-                        await box.delete(delKey);
+                      dynamic delKey;
+                      for (final k in box.keys) {
+                        final v = box.get(k);
+                        if (v != null && v['id'] == sessionId) {
+                          delKey = k;
+                          break;
+                        }
                       }
+                      if (delKey != null) await box.delete(delKey);
                     }
                   },
                 ),
@@ -149,7 +154,7 @@ class SessionsPage extends StatelessWidget {
       final name = controller.text.trim().isEmpty ? 'Session' : controller.text.trim();
       final sessions = Hive.box<Map>(kBoxSessions);
       await sessions.add({
-        'id': UniqueKey().toString(),
+        'id': _newId(),
         'name': name,
         'createdAt': DateTime.now().toIso8601String(),
       });
@@ -229,10 +234,15 @@ class SessionEntriesPage extends StatelessWidget {
                     final confirmed = await _confirm(context, 'Delete this entry?');
                     if (!confirmed) return;
                     // find and delete by key
-                    final key = box.keys.firstWhere((k) => box.get(k) == e, orElse: () => null);
-                    if (key != null) {
-                      await box.delete(key);
+                    dynamic keyToDelete;
+                    for (final k in box.keys) {
+                      final v = box.get(k);
+                      if (identical(v, e) || v == e) {
+                        keyToDelete = k;
+                        break;
+                      }
                     }
+                    if (keyToDelete != null) await box.delete(keyToDelete);
                   },
                 ),
               );
@@ -416,4 +426,10 @@ String _formatDateTime(String? iso) {
   final dt = DateTime.tryParse(iso);
   if (dt == null) return '';
   return DateFormat('yyyy-MM-dd HH:mm').format(dt);
+}
+
+String _newId() {
+  final now = DateTime.now().microsecondsSinceEpoch;
+  final r = (now % 1000003).toRadixString(36);
+  return '${now.toRadixString(36)}$r';
 }
