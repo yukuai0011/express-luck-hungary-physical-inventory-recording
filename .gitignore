@@ -81,6 +81,11 @@ out
 # Nuxt.js build / generate output
 .nuxt
 dist
+.output
+
+# Tauri local build folders
+src-tauri/target/
+src-tauri/gen/
 
 # Gatsby files
 .cache/
