@@ -6,6 +6,11 @@ android/app/build/
 ios/Pods/
 .expo/
 .expo-shared/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+pubspec.lock
 
 # OS files
 .DS_Store
@@ -47,6 +52,7 @@ dist-electron/
 **/android/captures/
 **/android/local.properties
 **/android/**/GeneratedPluginRegistrant.java
+**/android/**/key.properties
 
 # iOS/XCode
 **/ios/**/xcuserdata
