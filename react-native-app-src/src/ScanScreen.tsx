@@ -33,6 +33,22 @@ export function ScanScreen({ mode, onDecoded, onClose }: { mode: 'qr' | 'barcode
     );
   }
 
+  if (!useCodeScanner) {
+    // Plugin not available, show fallback
+    return (
+      <Modal visible={visible} transparent onRequestClose={() => { setVisible(false); onClose(); }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ backgroundColor: '#111827', padding: 16, borderRadius: 12, width: '90%' }}>
+            <Text style={{ color: 'white', marginBottom: 8 }}>Barcode/QR plugin not available. Please type manually or try again.</Text>
+            <TouchableOpacity onPress={() => { setVisible(false); onClose(); }} style={{ padding: 10, backgroundColor: '#2563eb', borderRadius: 8, alignSelf: 'flex-end' }}>
+              <Text style={{ color: 'white' }}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </Modal>
+    );
+  }
+
   return <MobileScanModal mode={mode} onDecoded={onDecoded} onClose={onClose} />;
 }
 
