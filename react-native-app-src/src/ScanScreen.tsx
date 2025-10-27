@@ -5,6 +5,7 @@ import { Modal, Platform, SafeAreaView, Text, TouchableOpacity, View } from 'rea
 let Camera: any = null;
 let useCameraDevices: any = null;
 let useBarcodeScanner: any = null;
+let runOnJSFn: any = null;
 try {
   // These imports work in the RN app runtime; they will fail in this workspace context.
   // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -13,6 +14,8 @@ try {
   useCameraDevices = vc.useCameraDevices;
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   useBarcodeScanner = require('@mgcrea/vision-camera-barcode-scanner').useBarcodeScanner;
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  runOnJSFn = require('react-native-worklets-core').runOnJS;
 } catch {}
 
 export function ScanScreen({ mode, onDecoded, onClose }: { mode: 'qr' | 'barcode'; onDecoded: (value: string) => void; onClose: () => void }) {
@@ -64,9 +67,7 @@ function MobileScanModal({ mode, onDecoded, onClose }: { mode: 'qr' | 'barcode';
       'worklet';
       if (barcodes && barcodes.length > 0) {
         // We don't have access to setState from a worklet; schedule on JS thread
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const { runOnJS } = require('react-native-worklets-core');
-        runOnJS((val: string) => {
+        runOnJSFn((val: string) => {
           setVisible(false);
           onDecoded(val);
         })(String(barcodes[0]?.value ?? ''));
