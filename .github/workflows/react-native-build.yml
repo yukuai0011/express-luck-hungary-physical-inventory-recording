@@ -37,10 +37,18 @@ jobs:
         working-directory: ExpressLuckInventory
         run: |
           npm install --no-audit --no-fund
-          npm install nativewind tailwindcss tailwindcss-react-native classnames @react-native-async-storage/async-storage react-native-permissions react-native-vision-camera vision-camera-code-scanner --save
+          npm install nativewind tailwindcss tailwindcss-react-native classnames @react-native-async-storage/async-storage react-native-permissions --save
+          npm install react-native-vision-camera@3.8.1 vision-camera-code-scanner@1.3.0 --save
 
       - name: Copy source and configs
         run: node ci/setup.js ExpressLuckInventory
+
+      - name: Adjust Android minSdk and Kotlin version
+        run: |
+          echo "REACT_NATIVE_MIN_SDK_VERSION=24" >> ExpressLuckInventory/android/gradle.properties
+          sed -i 's/kotlin(\"android\") version \"[0-9.]*\"/kotlin("android") version "1.9.24"/g' ExpressLuckInventory/android/build.gradle || true
+          sed -i 's/id(\"org.jetbrains.kotlin.android\") version \"[0-9.]*\"/id("org.jetbrains.kotlin.android") version "1.9.24"/g' ExpressLuckInventory/android/build.gradle || true
+        shell: bash
 
       - name: Ensure camera permission in AndroidManifest
         run: |
@@ -80,7 +88,8 @@ jobs:
         working-directory: ExpressLuckInventory
         run: |
           npm install --no-audit --no-fund
-          npm install nativewind tailwindcss tailwindcss-react-native classnames @react-native-async-storage/async-storage react-native-permissions react-native-vision-camera vision-camera-code-scanner --save
+          npm install nativewind tailwindcss tailwindcss-react-native classnames @react-native-async-storage/async-storage react-native-permissions --save
+          npm install react-native-vision-camera@3.8.1 vision-camera-code-scanner@1.3.0 --save
         shell: pwsh
 
       - name: Add React Native Windows (0.73)
@@ -92,6 +101,18 @@ jobs:
 
       - name: Copy source and configs
         run: node ci/setup.js ExpressLuckInventory
+        shell: pwsh
+
+      - name: Adjust Android settings (noop on Windows)
+        run: |
+          if (Test-Path "ExpressLuckInventory/android/gradle.properties") {
+            Add-Content -Path "ExpressLuckInventory/android/gradle.properties" -Value "REACT_NATIVE_MIN_SDK_VERSION=24"
+          }
+          if (Test-Path "ExpressLuckInventory/android/build.gradle") {
+            $p = "ExpressLuckInventory/android/build.gradle"
+            (Get-Content $p) -replace 'kotlin\("android"\) version "[0-9\.]+"','kotlin("android") version "1.9.24"' | Set-Content $p
+            (Get-Content $p) -replace 'id\("org.jetbrains.kotlin.android"\) version "[0-9\.]+"','id("org.jetbrains.kotlin.android") version "1.9.24"' | Set-Content $p
+          }
         shell: pwsh
 
       - name: Build Windows (Release + MSIX)
