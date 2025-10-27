@@ -1,402 +1,566 @@
-import 'dart:io';
+import 'dart:convert';
+import 'dart:io' show Platform; // guard for mobile vs desktop
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:csv/csv.dart';
+import 'package:http/http.dart' as http;
+import 'package:mobile_scanner/mobile_scanner.dart';
 
-// Boxes
-const String kBoxSessions = 'sessions';
-const String kBoxEntries = 'entries';
+// Boxes / keys
+const String kBoxSettings = 'settings';
+const String kKeyProfile = 'profile';
+const String kBoxOutbox = 'outbox';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
-  await Hive.openBox<Map>(kBoxSessions);
-  await Hive.openBox<Map>(kBoxEntries);
-
-  // Ensure a default session exists
-  final sessions = Hive.box<Map>(kBoxSessions);
-  if (sessions.isEmpty) {
-    await sessions.add({
-      'id': _newId(),
-      'name': 'Default',
-      'createdAt': DateTime.now().toIso8601String(),
-    });
-  }
-
+  await Hive.openBox(kBoxSettings);
+  await Hive.openBox<Map>(kBoxOutbox);
   runApp(const InventoryApp());
 }
 
 class InventoryApp extends StatelessWidget {
   const InventoryApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Inventory Recording',
-      theme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: Colors.indigo,
-        brightness: Brightness.light,
-      ),
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: Colors.indigo,
-        brightness: Brightness.dark,
-      ),
-      home: const SessionsPage(),
+      debugShowCheckedModeBanner: false,
+      title: 'Inventory Scanner',
+      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.indigo),
+      darkTheme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.indigo, brightness: Brightness.dark),
+      home: const HomePage(),
     );
   }
 }
 
-class SessionsPage extends StatelessWidget {
-  const SessionsPage({super.key});
-
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
   @override
-  Widget build(BuildContext context) {
-    final sessionsBox = Hive.box<Map>(kBoxSessions);
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Inventory Sessions'),
-      ),
-      body: ValueListenableBuilder(
-        valueListenable: sessionsBox.listenable(),
-        builder: (context, Box<Map> box, _) {
-          final items = box.values.toList(growable: false);
-          items.sort((a, b) => (b['createdAt'] ?? '').toString().compareTo((a['createdAt'] ?? '').toString()));
-          if (items.isEmpty) {
-            return const Center(
-              child: Text('No sessions yet. Tap + to create.'),
-            );
-          }
-          return ListView.separated(
-            itemCount: items.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
-            itemBuilder: (context, index) {
-              final s = items[index];
-              final sessionId = s['id'] as String? ?? '';
-              final name = s['name'] as String? ?? 'Session';
-              final created = _formatDate(s['createdAt']);
-              return ListTile(
-                title: Text(name),
-                subtitle: Text('Created $created'),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => SessionEntriesPage(sessionId: sessionId, sessionName: name),
-                  ),
-                ),
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete_outline),
-                  tooltip: 'Delete session',
-                  onPressed: () async {
-                    final confirmed = await _confirm(context, 'Delete this session and all its entries?');
-                    if (confirmed) {
-                      // Delete entries in this session
-                      final entriesBox = Hive.box<Map>(kBoxEntries);
-                      final toDelete = <int>[];
-                      for (final key in entriesBox.keys) {
-                        final v = entriesBox.get(key);
-                        if (v != null && v['sessionId'] == sessionId) {
-                          toDelete.add(key as int);
-                        }
-                      }
-                      await entriesBox.deleteAll(toDelete);
-                      // Delete session itself
-                      dynamic delKey;
-                      for (final k in box.keys) {
-                        final v = box.get(k);
-                        if (v != null && v['id'] == sessionId) {
-                          delKey = k;
-                          break;
-                        }
-                      }
-                      if (delKey != null) await box.delete(delKey);
-                    }
-                  },
-                ),
-              );
-            },
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _createSessionDialog(context),
-        child: const Icon(Icons.add),
-      ),
-    );
-  }
-
-  Future<void> _createSessionDialog(BuildContext context) async {
-    final controller = TextEditingController();
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('New session'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Session name',
-            hintText: 'e.g. 2025-10-27 Warehouse A',
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Create')),
-        ],
-      ),
-    );
-    if (ok == true) {
-      final name = controller.text.trim().isEmpty ? 'Session' : controller.text.trim();
-      final sessions = Hive.box<Map>(kBoxSessions);
-      await sessions.add({
-        'id': _newId(),
-        'name': name,
-        'createdAt': DateTime.now().toIso8601String(),
-      });
-    }
-  }
+  State<HomePage> createState() => _HomePageState();
 }
 
-class SessionEntriesPage extends StatelessWidget {
-  final String sessionId;
-  final String sessionName;
-  const SessionEntriesPage({super.key, required this.sessionId, required this.sessionName});
+class _HomePageState extends State<HomePage> {
+  // Profile scanning state (not persisted until Save)
+  String? _scannedApi;
+  Map<String, dynamic>? _scannedInfo;
+  final _pasteController = TextEditingController();
+  final _bearerController = TextEditingController();
 
-  @override
-  Widget build(BuildContext context) {
-    final entriesBox = Hive.box<Map>(kBoxEntries);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(sessionName),
-        actions: [
-          IconButton(
-            tooltip: 'Export CSV',
-            icon: const Icon(Icons.download),
-            onPressed: () async {
-              final path = await _exportSessionToCsv(sessionId, sessionName);
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Exported to $path')),
-                );
-              }
-            },
-          ),
-          IconButton(
-            tooltip: 'Clear entries',
-            icon: const Icon(Icons.delete_sweep_outlined),
-            onPressed: () async {
-              final confirmed = await _confirm(context, 'Delete all entries in this session?');
-              if (confirmed) {
-                final toDelete = <int>[];
-                for (final key in entriesBox.keys) {
-                  final v = entriesBox.get(key);
-                  if (v != null && v['sessionId'] == sessionId) {
-                    toDelete.add(key as int);
-                  }
-                }
-                await entriesBox.deleteAll(toDelete);
-              }
-            },
-          ),
-        ],
-      ),
-      body: ValueListenableBuilder(
-        valueListenable: entriesBox.listenable(),
-        builder: (context, Box<Map> box, _) {
-          final entries = box.values
-              .where((e) => e['sessionId'] == sessionId)
-              .map((e) => e as Map)
-              .toList(growable: false);
-          entries.sort((a, b) => (b['ts'] ?? '').toString().compareTo((a['ts'] ?? '').toString()));
-          if (entries.isEmpty) {
-            return const Center(child: Text('No entries yet. Tap + to add.'));
-          }
-          return ListView.separated(
-            itemCount: entries.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
-            itemBuilder: (context, index) {
-              final e = entries[index];
-              final code = (e['itemCode'] ?? '').toString();
-              final loc = (e['location'] ?? '').toString();
-              final qty = (e['quantity'] ?? 0).toString();
-              final ts = _formatDateTime(e['ts']);
-              return ListTile(
-                title: Text(code.isEmpty ? '(no item code)' : code),
-                subtitle: Text('Loc: ${loc.isEmpty ? '-' : loc} • Qty: $qty • $ts'),
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete_outline),
-                  onPressed: () async {
-                    final confirmed = await _confirm(context, 'Delete this entry?');
-                    if (!confirmed) return;
-                    // find and delete by key
-                    dynamic keyToDelete;
-                    for (final k in box.keys) {
-                      final v = box.get(k);
-                      if (identical(v, e) || v == e) {
-                        keyToDelete = k;
-                        break;
-                      }
-                    }
-                    if (keyToDelete != null) await box.delete(keyToDelete);
-                  },
-                ),
-              );
-            },
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => AddEntryPage(sessionId: sessionId),
-            ),
-          );
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('Add Entry'),
-      ),
-    );
-  }
-}
-
-class AddEntryPage extends StatefulWidget {
-  final String sessionId;
-  const AddEntryPage({super.key, required this.sessionId});
-
-  @override
-  State<AddEntryPage> createState() => _AddEntryPageState();
-}
-
-class _AddEntryPageState extends State<AddEntryPage> {
-  final _formKey = GlobalKey<FormState>();
-  final _itemCode = TextEditingController();
-  final _location = TextEditingController();
-  final _quantity = TextEditingController(text: '0');
-  final _remarks = TextEditingController();
+  // Work state
+  final _packageController = TextEditingController();
+  bool _intact = true;
+  int _quantity = 0;
+  String _result = '';
 
   @override
   void dispose() {
-    _itemCode.dispose();
-    _location.dispose();
-    _quantity.dispose();
-    _remarks.dispose();
+    _pasteController.dispose();
+    _bearerController.dispose();
+    _packageController.dispose();
+    super.dispose();
+  }
+
+  Map<String, dynamic>? get _currentProfile {
+    final box = Hive.box(kBoxSettings);
+    final p = box.get(kKeyProfile);
+    if (p is Map) return p.cast<String, dynamic>();
+    return null;
+  }
+
+  bool get _hasBothScans => _scannedApi != null && _scannedInfo != null;
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = _currentProfile;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Inventory Scanner PoC')), // Title aligns with original
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _buildProfileCard(profile),
+          const SizedBox(height: 16),
+          _buildWorkCard(profile),
+          const SizedBox(height: 16),
+          _buildOutboxCard(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileCard(Map<String, dynamic>? profile) {
+    final apiOk = _scannedApi != null;
+    final infoOk = _scannedInfo != null;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('1) Recording Profile', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            const Text('Scan two QR codes in any order to establish a profile: API Endpoint and Recording Info. Then save.'),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                _pill('API Endpoint', apiOk),
+                const SizedBox(width: 8),
+                _pill('Recording Info', infoOk),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              FilledButton(
+                onPressed: _onScanQr,
+                child: const Text('Scan QR'),
+              ),
+              OutlinedButton(
+                onPressed: () {
+                  setState(() {
+                    _scannedApi = null;
+                    _scannedInfo = null;
+                  });
+                },
+                child: const Text('Reset'),
+              ),
+            ]),
+            const SizedBox(height: 8),
+            ExpansionTile(
+              title: const Text('Paste JSON instead'),
+              childrenPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              children: [
+                TextField(
+                  controller: _pasteController,
+                  maxLines: 4,
+                  decoration: const InputDecoration(border: OutlineInputBorder(), hintText: '{"apiEndpoint":"<https://...>"} or {"orderNo":"1234","recordingNo":1,"locationCode":"FG HU"}'),
+                ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton(
+                    onPressed: _onDetectPastedJson,
+                    child: const Text('Detect'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            ExpansionTile(
+              title: const Text('Advanced: Optional Bearer Token'),
+              childrenPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              children: [
+                TextField(
+                  controller: _bearerController,
+                  obscureText: true,
+                  decoration: const InputDecoration(border: OutlineInputBorder(), hintText: 'Bearer token (optional)'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              FilledButton(
+                onPressed: _hasBothScans ? _onSaveProfile : null,
+                child: const Text('Save Profile'),
+              ),
+              OutlinedButton(
+                onPressed: () async {
+                  final box = Hive.box(kBoxSettings);
+                  await box.delete(kKeyProfile);
+                  setState(() {});
+                },
+                child: const Text('Clear Saved Profile'),
+              ),
+            ]),
+            const SizedBox(height: 8),
+            const Text('Current Profile'),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(border: Border.all(color: Theme.of(context).dividerColor), borderRadius: BorderRadius.circular(8)),
+              child: Text(_profileSummary(profile)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWorkCard(Map<String, dynamic>? profile) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('2) Work', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            const Text('Use your saved profile to submit package records.'),
+            const SizedBox(height: 12),
+            Row(children: [
+              Expanded(
+                child: TextField(
+                  controller: _packageController,
+                  decoration: const InputDecoration(labelText: 'Package No', border: OutlineInputBorder(), hintText: 'Scan or type package number'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton.icon(
+                onPressed: _onScanBarcode,
+                icon: const Icon(Icons.qr_code_scanner),
+                label: const Text('Scan'),
+              ),
+            ]),
+            const SizedBox(height: 12),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Package intact'),
+              value: _intact,
+              onChanged: (v) => setState(() => _intact = v ?? true),
+            ),
+            const SizedBox(height: 4),
+            Opacity(
+              opacity: _intact ? 0.6 : 1,
+              child: IgnorePointer(
+                ignoring: _intact,
+                child: Row(children: [
+                  IconButton(
+                    onPressed: () => setState(() => _quantity = (_quantity - 1).clamp(0, 1 << 31)),
+                    icon: const Icon(Icons.remove_circle_outline),
+                  ),
+                  SizedBox(
+                    width: 100,
+                    child: TextField(
+                      key: ValueKey(_intact),
+                      controller: TextEditingController(text: '$_quantity'),
+                      readOnly: true,
+                      textAlign: TextAlign.center,
+                      decoration: const InputDecoration(labelText: 'Quantity', border: OutlineInputBorder()),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => setState(() => _quantity = (_quantity + 1).clamp(0, 1 << 31)),
+                    icon: const Icon(Icons.add_circle_outline),
+                  ),
+                ]),
+              ),
+            ),
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: _onSubmit,
+              child: const Text('Submit'),
+            ),
+            const SizedBox(height: 12),
+            if (_result.isNotEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(border: Border.all(color: Theme.of(context).dividerColor), borderRadius: BorderRadius.circular(8)),
+                child: Text(_result),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOutboxCard() {
+    final outbox = Hive.box<Map>(kBoxOutbox);
+    final count = outbox.length;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Offline queue', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 8),
+          Text('Pending submissions: $count'),
+          const SizedBox(height: 8),
+          Wrap(spacing: 8, children: [
+            OutlinedButton.icon(onPressed: _onSyncNow, icon: const Icon(Icons.sync), label: const Text('Sync now')),
+            OutlinedButton.icon(
+              onPressed: () async {
+                if (!await _confirm(context, 'Clear all pending submissions?')) return;
+                await outbox.clear();
+                setState(() {});
+              },
+              icon: const Icon(Icons.delete_sweep_outlined),
+              label: const Text('Clear'),
+            ),
+          ])
+        ]),
+      ),
+    );
+  }
+
+  // --- Actions ---
+  Future<void> _onScanQr() async {
+    if (!(Platform.isAndroid || Platform.isIOS)) {
+      await _info(context, 'Camera scanning is supported on Android/iOS only. Use Paste JSON.');
+      return;
+    }
+    String? text = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ScanView(title: 'Scan QR')),
+    );
+    if (text == null || text.isEmpty) return;
+    final ok = _handleQrText(text);
+    if (!ok && mounted) {
+      _toast('Not JSON or unexpected structure; keep scanning…');
+    }
+    setState(() {});
+  }
+
+  Future<void> _onScanBarcode() async {
+    if (!(Platform.isAndroid || Platform.isIOS)) {
+      await _info(context, 'Camera scanning is supported on Android/iOS only. Type the package number.');
+      return;
+    }
+    final code = await Navigator.push<String?>(
+      context,
+      MaterialPageRoute(builder: (_) => const ScanView(title: 'Scan Package Barcode')),
+    );
+    if (code != null && code.isNotEmpty) {
+      setState(() => _packageController.text = code.trim());
+    }
+  }
+
+  void _onDetectPastedJson() {
+    final ok = _handleQrText(_pasteController.text.trim());
+    if (!ok) _toast('Not valid JSON or unexpected format');
+    setState(() {});
+  }
+
+  bool _handleQrText(String text) {
+    Map<String, dynamic>? obj;
+    try {
+      obj = jsonDecode(text) as Map<String, dynamic>?;
+    } catch (_) {
+      return false;
+    }
+    if (obj == null) return false;
+    // API endpoint
+    if (obj['apiEndpoint'] is String) {
+      _scannedApi = _sanitizeEndpoint(obj['apiEndpoint'] as String);
+      return true;
+    }
+    // Recording info
+    final orderNo = (obj['orderNo'] ?? '').toString().trim();
+    final recNo = obj['recordingNo'];
+    final location = (obj['locationCode'] ?? '').toString().trim();
+    if (orderNo.isNotEmpty && location.isNotEmpty && (recNo is num)) {
+      _scannedInfo = {
+        'orderNo': orderNo,
+        'recordingNo': (recNo as num).toInt(),
+        'locationCode': location,
+      };
+      return true;
+    }
+    return false;
+  }
+
+  Future<void> _onSaveProfile() async {
+    final box = Hive.box(kBoxSettings);
+    await box.put(kKeyProfile, {
+      'apiEndpoint': _scannedApi,
+      'orderNo': _scannedInfo!['orderNo'],
+      'recordingNo': _scannedInfo!['recordingNo'],
+      'locationCode': _scannedInfo!['locationCode'],
+      'bearerToken': _bearerController.text.trim().isEmpty ? null : _bearerController.text.trim(),
+    });
+    if (mounted) {
+      _toast('Profile saved');
+      setState(() {});
+    }
+  }
+
+  Future<void> _onSubmit() async {
+    setState(() => _result = '');
+    final p = _currentProfile;
+    if (p == null) {
+      _toast('No profile saved. Please create and save a profile first.');
+      return;
+    }
+    final pkg = _packageController.text.trim();
+    if (pkg.isEmpty) {
+      _toast('Package number is required.');
+      return;
+    }
+    final qty = _intact ? 0 : _quantity;
+    final url = _sanitizeEndpoint(p['apiEndpoint']?.toString() ?? '');
+    if (!url.startsWith('http')) {
+      _toast('Profile API endpoint is invalid.');
+      return;
+    }
+    final payload = {
+      'orderNo': p['orderNo'],
+      'recordingNo': p['recordingNo'],
+      'locationCode': p['locationCode'],
+      'packageNo': pkg,
+      'quantity': qty,
+      'packageIntact': _intact,
+    };
+
+    try {
+      final headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'x-ms-client-tracking-id': _uuidv4(),
+      };
+      final token = (p['bearerToken'] ?? '').toString().trim();
+      if (token.isNotEmpty) headers['Authorization'] = 'Bearer $token';
+
+      final resp = await http.post(Uri.parse(url), headers: headers, body: jsonEncode(payload));
+      final ct = resp.headers['content-type'] ?? '';
+      String bodyOut;
+      if (ct.contains('application/json')) {
+        bodyOut = jsonEncode(jsonDecode(resp.body), toEncodable: (o) => o.toString());
+      } else {
+        bodyOut = resp.body;
+      }
+      setState(() {
+        _result = 'POST $url\nPayload:\n${jsonEncode(payload)}\n\nResponse:\n{\n  "status": ${resp.statusCode},\n  "ok": ${resp.statusCode >= 200 && resp.statusCode < 300},\n  "body": ${jsonEncode(bodyOut)}\n}';
+      });
+    } catch (e) {
+      // Offline or CORS/network errors → queue
+      final outbox = Hive.box<Map>(kBoxOutbox);
+      await outbox.add({
+        'url': url,
+        'headers': {'Authorization': (p['bearerToken'] ?? '').toString().trim().isEmpty ? null : 'Bearer ${p['bearerToken']}'},
+        'payload': payload,
+        'ts': DateTime.now().toIso8601String(),
+      });
+      setState(() {
+        _result = 'Request failed (likely offline). Saved to queue.\n${e.toString()}';
+      });
+    }
+    setState(() {});
+  }
+
+  Future<void> _onSyncNow() async {
+    final outbox = Hive.box<Map>(kBoxOutbox);
+    final items = outbox.values.toList(growable: false);
+    int success = 0;
+    for (var i = 0; i < items.length; i++) {
+      final entry = items[i];
+      final url = entry['url']?.toString() ?? '';
+      final payload = entry['payload'] as Map? ?? {};
+      if (!url.startsWith('http')) continue;
+      try {
+        final headers = <String, String>{
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'x-ms-client-tracking-id': _uuidv4(),
+        };
+        final auth = (entry['headers'] as Map?)?['Authorization']?.toString();
+        if (auth != null && auth.isNotEmpty) headers['Authorization'] = auth;
+        final resp = await http.post(Uri.parse(url), headers: headers, body: jsonEncode(payload));
+        if (resp.statusCode >= 200 && resp.statusCode < 300) {
+          // delete this item
+          final key = outbox.keyAt(i);
+          await outbox.delete(key);
+          success++;
+        }
+      } catch (_) {
+        // keep in queue
+      }
+    }
+    _toast(success > 0 ? 'Synced $success item(s)' : 'Nothing synced');
+    setState(() {});
+  }
+
+  // --- Utils ---
+  String _profileSummary(Map<String, dynamic>? profile) {
+    if (profile == null) return '(No profile saved)';
+    final safe = {
+      'apiEndpoint': profile['apiEndpoint'] ?? '',
+      'orderNo': profile['orderNo'] ?? '',
+      'recordingNo': profile['recordingNo'] ?? '',
+      'locationCode': profile['locationCode'] ?? '',
+      'bearerToken': (profile['bearerToken'] ?? '').toString().isNotEmpty ? '(stored)' : '(none)',
+    };
+    return const JsonEncoder.withIndent('  ').convert(safe);
+  }
+
+  String _sanitizeEndpoint(String input) {
+    var s = input.trim();
+    if (s.startsWith('<') && s.endsWith('>')) s = s.substring(1, s.length - 1);
+    return s;
+  }
+
+  String _uuidv4() {
+    // simple RFC4122-ish uuid
+    final rand = (int max) => (DateTime.now().microsecondsSinceEpoch + (max - 1)) % max;
+    String hex(int n, int width) => n.toRadixString(16).padLeft(width, '0');
+    final p1 = hex(rand(0xffffffff), 8);
+    final p2 = hex(rand(0xffff), 4);
+    final p3 = hex((rand(0x0fff) & 0x0fff) | 0x4000, 4);
+    final p4 = hex((rand(0x3fff) & 0x3fff) | 0x8000, 4);
+    final p5 = hex(rand(0xffffffffffff), 12);
+    return '$p1-$p2-$p3-$p4-$p5';
+  }
+
+  Future<void> _toast(String message) async {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _info(BuildContext context, String message) async {
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(title: const Text('Info'), content: Text(message), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))]),
+    );
+  }
+}
+
+class ScanView extends StatefulWidget {
+  final String title;
+  const ScanView({super.key, required this.title});
+  const ScanView.qr({super.key}) : title = 'Scan QR';
+
+  @override
+  State<ScanView> createState() => _ScanViewState();
+}
+
+class _ScanViewState extends State<ScanView> {
+  final MobileScannerController _controller = MobileScannerController();
+  bool _handled = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Entry')),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            TextFormField(
-              controller: _itemCode,
-              decoration: const InputDecoration(
-                labelText: 'Item code / Barcode',
-                border: OutlineInputBorder(),
-              ),
-              textInputAction: TextInputAction.next,
-              validator: (v) => null,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _location,
-              decoration: const InputDecoration(
-                labelText: 'Location',
-                border: OutlineInputBorder(),
-              ),
-              textInputAction: TextInputAction.next,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _quantity,
-              decoration: const InputDecoration(
-                labelText: 'Quantity',
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: TextInputType.number,
-              validator: (v) {
-                final n = int.tryParse(v?.trim() ?? '');
-                if (n == null || n < 0) return 'Enter a non-negative integer';
-                return null;
-              },
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _remarks,
-              decoration: const InputDecoration(
-                labelText: 'Remarks (optional)',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 3,
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: () async {
-                      if (!_formKey.currentState!.validate()) return;
-                      final entriesBox = Hive.box<Map>(kBoxEntries);
-                      final now = DateTime.now();
-                      final entry = {
-                        'sessionId': widget.sessionId,
-                        'itemCode': _itemCode.text.trim(),
-                        'location': _location.text.trim(),
-                        'quantity': int.tryParse(_quantity.text.trim()) ?? 0,
-                        'remarks': _remarks.text.trim(),
-                        'ts': now.toIso8601String(),
-                      };
-                      await entriesBox.add(entry);
-                      if (context.mounted) Navigator.pop(context);
-                    },
-                    icon: const Icon(Icons.save),
-                    label: const Text('Save'),
-                  ),
-                ),
-              ],
-            )
-          ],
-        ),
+      appBar: AppBar(
+        title: Text(widget.title),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.cameraswitch),
+            onPressed: () => _controller.switchCamera(),
+          ),
+          IconButton(
+            icon: const Icon(Icons.flash_on),
+            onPressed: () => _controller.toggleTorch(),
+          ),
+        ],
+      ),
+      body: MobileScanner(
+        controller: _controller,
+        onDetect: (capture) {
+          if (_handled) return;
+          final codes = capture.barcodes;
+          if (codes.isEmpty) return;
+          final raw = codes.first.rawValue;
+          if (raw == null || raw.isEmpty) return;
+          _handled = true;
+          Navigator.pop(context, raw);
+        },
       ),
     );
   }
-}
-
-Future<String> _exportSessionToCsv(String sessionId, String sessionName) async {
-  final entriesBox = Hive.box<Map>(kBoxEntries);
-  final entries = entriesBox.values
-      .where((e) => e['sessionId'] == sessionId)
-      .map((e) => e as Map)
-      .toList(growable: false);
-  final rows = <List<dynamic>>[
-    ['ItemCode', 'Location', 'Quantity', 'Remarks', 'Timestamp'],
-    ...entries.map((e) => [
-          e['itemCode'] ?? '',
-          e['location'] ?? '',
-          e['quantity'] ?? 0,
-          e['remarks'] ?? '',
-          e['ts'] ?? '',
-        ])
-  ];
-  final csv = const ListToCsvConverter().convert(rows);
-
-  final dir = await getApplicationDocumentsDirectory();
-  final safeName = sessionName.trim().isEmpty ? 'session' : sessionName.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
-  final date = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
-  final file = File('${dir.path}/inventory_${safeName}_$date.csv');
-  await file.writeAsString(csv, mode: FileMode.write, flush: true);
-  return file.path;
 }
 
 Future<bool> _confirm(BuildContext context, String message) async {
@@ -412,24 +576,4 @@ Future<bool> _confirm(BuildContext context, String message) async {
     ),
   );
   return res ?? false;
-}
-
-String _formatDate(String? iso) {
-  if (iso == null || iso.isEmpty) return '';
-  final dt = DateTime.tryParse(iso);
-  if (dt == null) return '';
-  return DateFormat.yMMMd().format(dt);
-}
-
-String _formatDateTime(String? iso) {
-  if (iso == null || iso.isEmpty) return '';
-  final dt = DateTime.tryParse(iso);
-  if (dt == null) return '';
-  return DateFormat('yyyy-MM-dd HH:mm').format(dt);
-}
-
-String _newId() {
-  final now = DateTime.now().microsecondsSinceEpoch;
-  final r = (now % 1000003).toRadixString(36);
-  return '${now.toRadixString(36)}$r';
 }
