@@ -1,10 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Modal, Platform, SafeAreaView, Text, TouchableOpacity, View } from 'react-native';
 
 // Only use camera on Android/iOS; on Windows show a fallback
 let Camera: any = null;
 let useCameraDevices: any = null;
-let useCodeScanner: any = null;
+let useBarcodeScanner: any = null;
 try {
   // These imports work in the RN app runtime; they will fail in this workspace context.
   // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -12,7 +12,7 @@ try {
   Camera = vc.Camera;
   useCameraDevices = vc.useCameraDevices;
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  useCodeScanner = require('vision-camera-code-scanner').useCodeScanner;
+  useBarcodeScanner = require('@mgcrea/vision-camera-barcode-scanner').useBarcodeScanner;
 } catch {}
 
 export function ScanScreen({ mode, onDecoded, onClose }: { mode: 'qr' | 'barcode'; onDecoded: (value: string) => void; onClose: () => void }) {
@@ -33,7 +33,7 @@ export function ScanScreen({ mode, onDecoded, onClose }: { mode: 'qr' | 'barcode
     );
   }
 
-  if (!useCodeScanner) {
+  if (!useBarcodeScanner) {
     // Plugin not available, show fallback
     return (
       <Modal visible={visible} transparent onRequestClose={() => { setVisible(false); onClose(); }}>
@@ -57,13 +57,19 @@ function MobileScanModal({ mode, onDecoded, onClose }: { mode: 'qr' | 'barcode';
   const device = devices.back ?? devices.external ?? devices.front;
   const [visible, setVisible] = useState(true);
 
-  const codeScanner = useCodeScanner({
-    codeTypes: mode === 'qr' ? ['qr'] : ['ean-13', 'code-128', 'code-39', 'qr'],
-    onCodeScanned: (codes: any[]) => {
-      const v = codes?.[0]?.value;
-      if (v) {
-        setVisible(false);
-        onDecoded(String(v));
+  const { props: cameraProps } = useBarcodeScanner({
+    fps: 5,
+    barcodeTypes: mode === 'qr' ? ['qr'] : ['qr', 'ean-13', 'code-128', 'code-39'],
+    onBarcodeScanned: (barcodes: any[]) => {
+      'worklet';
+      if (barcodes && barcodes.length > 0) {
+        // We don't have access to setState from a worklet; schedule on JS thread
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { runOnJS } = require('react-native-worklets-core');
+        runOnJS((val: string) => {
+          setVisible(false);
+          onDecoded(val);
+        })(String(barcodes[0]?.value ?? ''));
       }
     },
   });
@@ -91,7 +97,7 @@ function MobileScanModal({ mode, onDecoded, onClose }: { mode: 'qr' | 'barcode';
             </TouchableOpacity>
           </View>
           <View style={{ height: 360, overflow: 'hidden', borderRadius: 8 }}>
-            <Camera style={{ flex: 1 }} device={device} isActive={visible} codeScanner={codeScanner} />
+            <Camera style={{ flex: 1 }} device={device} isActive={visible} {...cameraProps} />
           </View>
           <Text style={{ color: '#94a3b8', marginTop: 6 }}>Point the camera at the code…</Text>
         </View>
