@@ -1,0 +1,109 @@
+name: Build React Native APK and Windows package
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  android:
+    name: Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android platforms
+        run: sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
+        shell: bash
+
+      - name: Initialize React Native app
+        run: npx react-native@latest init ExpressLuckInventory --version latest --template react-native-template-typescript
+
+      - name: Install app dependencies
+        working-directory: ExpressLuckInventory
+        run: |
+          npm install --no-audit --no-fund
+          npm install nativewind tailwindcss tailwindcss-react-native classnames @react-native-async-storage/async-storage react-native-permissions react-native-vision-camera vision-camera-code-scanner --save
+
+      - name: Copy source and configs
+        run: node ci/setup.js ExpressLuckInventory
+
+      - name: Ensure camera permission in AndroidManifest
+        run: |
+          if ! grep -q "android.permission.CAMERA" ExpressLuckInventory/android/app/src/main/AndroidManifest.xml; then \
+            sed -i '0,/<manifest/!b;//!{p;:a;N;$!ba;s/<manifest[^>]*>/<manifest xmlns:android="http:\/\/schemas.android.com\/apk\/res\/android">/}' ExpressLuckInventory/android/app/src/main/AndroidManifest.xml; \
+            sed -i '0,/<application/ s//<uses-permission android:name="android.permission.CAMERA"\/>\n    <application/' ExpressLuckInventory/android/app/src/main/AndroidManifest.xml; \
+          fi
+        shell: bash
+
+      - name: Build APK (release)
+        working-directory: ExpressLuckInventory/android
+        run: ./gradlew assembleRelease
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release.apk
+          path: ExpressLuckInventory/android/app/build/outputs/apk/release/app-release.apk
+
+  windows:
+    name: Windows package
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Initialize React Native app
+        run: npx react-native@latest init ExpressLuckInventory --version latest --template react-native-template-typescript
+        shell: pwsh
+
+      - name: Install app dependencies
+        working-directory: ExpressLuckInventory
+        run: |
+          npm install --no-audit --no-fund
+          npm install nativewind tailwindcss tailwindcss-react-native classnames @react-native-async-storage/async-storage react-native-permissions react-native-vision-camera vision-camera-code-scanner --save
+        shell: pwsh
+
+      - name: Add React Native Windows
+        working-directory: ExpressLuckInventory
+        run: |
+          npm install react-native-windows@latest --save
+          npx react-native-windows-init --overwrite --language cpp
+        shell: pwsh
+
+      - name: Copy source and configs
+        run: node ci/setup.js ExpressLuckInventory
+        shell: pwsh
+
+      - name: Build Windows (Release + MSIX)
+        working-directory: ExpressLuckInventory
+        run: |
+          msbuild .\windows\ExpressLuckInventory.sln /restore /p:Configuration=Release /p:AppxBundle=Always /p:UapAppxPackageBuildMode=StoreUpload
+        shell: pwsh
+
+      - name: Upload Windows package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-package
+          path: |
+            ExpressLuckInventory\windows\**\AppPackages\**\*.msix*
+            ExpressLuckInventory\windows\**\AppPackages\**\*.appx*

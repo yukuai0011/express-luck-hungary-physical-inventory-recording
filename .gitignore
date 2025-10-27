@@ -137,3 +137,27 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# React Native
+android/
+ios/
+windows/
+*.iml
+.gradle/
+local.properties
+**/build/
+.idea/
+.vscode/
+*.keystore
+*.jks
+node_modules/
+package-lock.json
+yarn.lock
+.DS_Store
+dist/
+.expo/
+.expo-shared/
+*.msix
+*.msixbundle
+*.appx
+*.appxbundle
