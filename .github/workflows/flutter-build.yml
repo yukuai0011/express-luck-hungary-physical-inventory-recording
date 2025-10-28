@@ -73,8 +73,29 @@ jobs:
         run: flutter build windows --release
         shell: pwsh
 
-      - name: Upload Windows EXE artifact
+      - name: Package Windows portable (zip)
+        run: |
+          $buildDir = Join-Path $PWD 'build\windows\x64\runner\Release'
+          if (-not (Test-Path $buildDir)) { $buildDir = Join-Path $PWD 'build\windows\runner\Release' }
+          Write-Host "Packaging from $buildDir"
+          if (-not (Test-Path $buildDir)) {
+            Write-Error "Expected build output not found: $buildDir"
+          }
+          $destDir = Join-Path $PWD 'build\artifacts'
+          New-Item -ItemType Directory -Force -Path $destDir | Out-Null
+          $portableFolder = Join-Path $destDir 'windows-portable'
+          if (Test-Path $portableFolder) { Remove-Item -Recurse -Force $portableFolder }
+          New-Item -ItemType Directory -Path $portableFolder | Out-Null
+          Copy-Item -Path (Join-Path $buildDir '*') -Destination $portableFolder -Recurse -Force
+          $zipPath = Join-Path $destDir 'windows-portable.zip'
+          if (Test-Path $zipPath) { Remove-Item -Force $zipPath }
+          Compress-Archive -Path (Join-Path $portableFolder '*') -DestinationPath $zipPath -Force
+        shell: pwsh
+
+      - name: Upload Windows portable artifact
         uses: actions/upload-artifact@v4
         with:
-          name: windows-exe
-          path: build/windows/**/runner/Release/*.exe
+          name: windows-portable
+          path: |
+            build/artifacts/windows-portable.zip
+            build/artifacts/windows-portable/**
