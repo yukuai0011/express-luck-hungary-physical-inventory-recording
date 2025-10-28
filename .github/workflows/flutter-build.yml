@@ -118,8 +118,21 @@ jobs:
           sed -i -E 's|<base href="/"\s*/?>|<base href="./">|g' build/web/index.html
         shell: bash
 
-      - name: Upload Web artifact (contains index.html)
+      - name: Prepare GitHub Pages variant
+        run: |
+          set -e
+          cp -r build/web build/web-pages
+          sed -i -E 's|<base href="[^"]*"\s*/?>|<base href="/express-luck-hungary-physical-inventory-recording-webpage-public/">|g' build/web-pages/index.html
+        shell: bash
+
+      - name: Upload Web artifact (local-open, contains index.html)
         uses: actions/upload-artifact@v4
         with:
           name: web-dist
           path: build/web
+
+      - name: Upload Web (GitHub Pages variant)
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-dist-pages
+          path: build/web-pages
