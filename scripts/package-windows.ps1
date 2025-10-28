@@ -7,19 +7,25 @@ $ErrorActionPreference = 'Stop'
 Write-Host "Building Flutter Windows $Configuration..."
 flutter config --enable-windows-desktop | Out-Null
 flutter pub get | Out-Null
-flutter build windows --$Configuration | Out-Null
-
-# Find the Release folder produced by Flutter (supporting multiple Flutter versions)
-$projectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$candidates = @(
-    Join-Path $projectRoot "build/windows/x64/runner/$Configuration",
-    Join-Path $projectRoot "build/windows/runner/$Configuration"
-)
-
-$releaseDir = $null
-foreach ($c in $candidates) {
-    if (Test-Path $c) { $releaseDir = $c; break }
+# Normalize build mode for flutter CLI
+$buildMode = $Configuration.ToLower()
+switch ($buildMode) {
+    'release' { $configFolder = 'Release' }
+    'profile' { $configFolder = 'Profile' }
+    'debug'   { $configFolder = 'Debug' }
+    default   { $configFolder = 'Release'; $buildMode = 'release' }
 }
+
+flutter build windows --$buildMode | Out-Null
+
+# Find the Release folder produced by Flutter (supporting multiple Flutter versions/architectures)
+$projectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$candidate1 = Join-Path $projectRoot "build/windows/x64/runner/$configFolder"
+$candidate2 = Join-Path $projectRoot "build/windows/arm64/runner/$configFolder"
+$candidate3 = Join-Path $projectRoot "build/windows/runner/$configFolder"
+$candidates = @($candidate1, $candidate2, $candidate3)
+
+$releaseDir = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
 
 if (-not $releaseDir) { throw "Could not locate Windows $Configuration output folder. Looked under: $($candidates -join ', ')" }
 
