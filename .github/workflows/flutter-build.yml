@@ -95,6 +95,10 @@ jobs:
         run: flutter config --enable-web
         shell: bash
 
+      - name: Ensure web platform folder
+        run: flutter create . --platforms web
+        shell: bash
+
       - name: Flutter pub get
         run: flutter pub get
         shell: bash
