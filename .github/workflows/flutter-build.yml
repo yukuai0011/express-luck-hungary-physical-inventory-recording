@@ -73,11 +73,12 @@ jobs:
         run: flutter build windows --release
         shell: pwsh
 
-      - name: Upload Windows EXE artifact
+      - name: Upload Windows portable artifact (full Release folder)
         uses: actions/upload-artifact@v4
         with:
-          name: windows-exe
-          path: build/windows/**/runner/Release/*.exe
+          name: windows-portable
+          path: build/windows/**/runner/Release/**
+          if-no-files-found: error
 
   web:
     name: Web (GitHub Pages)
