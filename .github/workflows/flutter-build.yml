@@ -109,7 +109,13 @@ jobs:
         shell: bash
 
       - name: Build Web (release)
-        run: flutter build web --release --base-href ./
+        run: flutter build web --release --pwa-strategy=none
+        shell: bash
+
+      - name: Make index.html locally openable (relative base href)
+        run: |
+          set -e
+          sed -i -E 's|<base href="/"\s*/?>|<base href="./">|g' build/web/index.html
         shell: bash
 
       - name: Upload Web artifact (contains index.html)
