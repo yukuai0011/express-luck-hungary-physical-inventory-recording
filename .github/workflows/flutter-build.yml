@@ -78,39 +78,3 @@ jobs:
         with:
           name: windows-exe
           path: build/windows/**/runner/Release/*.exe
-
-  web:
-    name: Web (GitHub Pages)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-
-      - name: Enable web support
-        run: flutter config --enable-web
-        shell: bash
-
-      - name: Flutter pub get
-        run: flutter pub get
-        shell: bash
-
-      - name: Build Web (release, GitHub Pages base href)
-        run: flutter build web --release --base-href=/${{ github.event.repository.name }}/
-        shell: bash
-
-      - name: Make Pages-compatible tweaks
-        run: |
-          touch build/web/.nojekyll
-          cp build/web/index.html build/web/404.html
-        shell: bash
-
-      - name: Upload Web artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: web-dist
-          path: build/web/**
