@@ -46,6 +46,15 @@ flutter config --enable-windows-desktop
 flutter build windows --release
 ```
 
+To package a portable ZIP locally (includes all required DLLs):
+
+```
+# From the project root (PowerShell)
+pwsh scripts/package-windows.ps1 -Configuration Release
+```
+
+The packaged ZIP will be created under `artifacts/express_luck_inventory-windows-Release.zip`.
+
 ## GitHub Actions (CI)
 
 Workflow file: `.github/workflows/flutter-build.yml`
@@ -56,7 +65,13 @@ Workflow file: `.github/workflows/flutter-build.yml`
   - Windows EXE on Windows runner
 - Uploads build artifacts:
   - `app-release.apk`
-  - `windows-exe/*.exe`
+  - `windows-portable-zip` → a ZIP containing the full Windows Release folder (EXE + flutter_windows.dll + icudtl.dat + plugins like connectivity_plus)
+
+### Windows distribution notes
+
+- Always distribute the entire Windows Release folder together. The EXE depends on adjacent DLLs (Flutter engine and plugin DLLs). If you only share the `.exe`, it will fail with missing `flutter_windows.dll` or plugin DLLs (e.g., `connectivity_plus`).
+- In CI, download the `windows-portable-zip` artifact, unzip anywhere, then run the `.exe` inside. Do not move the `.exe` without the rest of the files.
+- Single-file portable EXE is not supported for Flutter desktop because it relies on the Flutter engine DLL and plugin DLLs. If you need a single installer file, consider an installer (e.g., MSIX, Inno Setup) which unpacks everything at install time.
 
 No secrets or signing keys are required; artifacts are unsigned (debug/release without signing) for easy distribution and testing.
 
