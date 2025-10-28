@@ -73,60 +73,21 @@ jobs:
         run: flutter build windows --release
         shell: pwsh
 
-      - name: Create Windows portable ZIP and record paths
-        run: |
-          $candidateDirs = @(
-            Join-Path $PWD.Path "build/windows/x64/runner/Release",
-            Join-Path $PWD.Path "build/windows/arm64/runner/Release",
-            Join-Path $PWD.Path "build/windows/runner/Release"
-          )
-          $releaseDir = $null
-          foreach ($d in $candidateDirs) {
-            if (Test-Path $d) { $releaseDir = (Resolve-Path $d).Path; break }
-          }
-          if (-not $releaseDir) {
-            $releaseDir = Get-ChildItem -Path "build/windows" -Recurse -Directory |
-              Where-Object { $_.FullName -match "\\runner\\Release$" } |
-              Select-Object -First 1 | ForEach-Object { $_.FullName }
-          }
-          if (-not $releaseDir) { Write-Error 'Runner Release directory not found under build/windows' }
-
-          $exePath = Get-ChildItem -Path $releaseDir -Filter *.exe -File | Select-Object -First 1 | ForEach-Object { $_.FullName }
-          if (-not $exePath) { Write-Error "No .exe found under $releaseDir" }
-
-          $zipPath = Join-Path $PWD.Path 'windows-portable.zip'
-          if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
-          Compress-Archive -Path (Join-Path $releaseDir '*') -DestinationPath $zipPath
-
-          # Normalize to forward slashes for actions/upload-artifact
-          $zipPathFS = $zipPath -replace "\\","/"
-          $releaseDirFS = $releaseDir -replace "\\","/"
-          $exePathFS = $exePath -replace "\\","/"
-
-          "WINDOWS_PORTABLE_ZIP=$zipPathFS" | Out-File -FilePath $env:GITHUB_ENV -Append
-          "WINDOWS_RELEASE_DIR=$releaseDirFS" | Out-File -FilePath $env:GITHUB_ENV -Append
-          "WINDOWS_EXE_PATH=$exePathFS" | Out-File -FilePath $env:GITHUB_ENV -Append
-        shell: pwsh
-
-      - name: Upload Windows portable artifact (ZIP)
+      - name: Upload Windows portable (Release folder)
         uses: actions/upload-artifact@v4
         with:
           name: windows-portable
-          path: ${{ env.WINDOWS_PORTABLE_ZIP }}
-          if-no-files-found: error
+          path: |
+            build/windows/x64/runner/Release
+            build/windows/arm64/runner/Release
+            build/windows/runner/Release
+          if-no-files-found: warn
 
       - name: Upload Windows EXE (convenience)
         uses: actions/upload-artifact@v4
         with:
           name: windows-exe
-          path: ${{ env.WINDOWS_EXE_PATH }}
-          if-no-files-found: error
-
-      - name: Upload Windows Release folder (raw)
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-portable-folder
-          path: ${{ env.WINDOWS_RELEASE_DIR }}/**
+          path: build/windows/**/runner/Release/*.exe
           if-no-files-found: error
 
   web:
