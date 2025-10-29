@@ -109,15 +109,23 @@ jobs:
         shell: bash
 
       - name: Build Web (release)
-        run: flutter build web --release --web-renderer html --pwa-strategy=none
+        run: |
+          set -e
+          if flutter build web -h | grep -q -- "--web-renderer"; then
+            echo "Building with HTML renderer via --web-renderer"
+            flutter build web --release --web-renderer html --pwa-strategy=none
+          else
+            echo "--web-renderer not supported; falling back to legacy define (HTML renderer)"
+            flutter build web --release --dart-define=FLUTTER_WEB_USE_SKIA=false --pwa-strategy=none
+          fi
         shell: bash
 
       - name: Inject dynamic base-href (works locally and on GitHub Pages)
         run: |
           set -e
           SCRIPT='\n  <script>\n  (function() {\n    try {\n      var base = "/";\n      if (location.protocol === "file:") {\n        base = "./";\n      } else {\n        var path = location.pathname;\n        if (!path.endsWith("/")) {\n          path = path.substring(0, path.lastIndexOf("/") + 1);\n        }\n        base = path;\n      }\n      var el = document.querySelector("base");\n      if (!el) {\n        el = document.createElement("base");\n        document.head.insertBefore(el, document.head.firstChild);\n      }\n      el.setAttribute("href", base);\n    } catch (e) {\n      console.error("Failed to set dynamic base-href:", e);\n    }\n  })();\n  </script>'
-          # Insert before the bootstrap script to ensure it takes effect
-          awk -v script="$SCRIPT" '/<script src="flutter_bootstrap.js"/{print script} {print}' build/web/index.html > build/web/index.html.tmp
+          # Insert before the app bootstrap script to ensure it takes effect (support multiple Flutter versions)
+          awk -v script="$SCRIPT" '/<script[^>]*src="flutter_bootstrap.js"|<script[^>]*src="flutter.js"|<script[^>]*src="main.dart.js"/{print script} {print}' build/web/index.html > build/web/index.html.tmp
           mv build/web/index.html.tmp build/web/index.html
         shell: bash
 
