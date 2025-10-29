@@ -577,7 +577,7 @@ class _ScanViewState extends State<ScanView> {
       body: MobileScanner(
         controller: _controller,
         fit: BoxFit.cover,
-        placeholderBuilder: (context, child) => Center(
+        placeholderBuilder: (context) => Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: const [
@@ -587,7 +587,7 @@ class _ScanViewState extends State<ScanView> {
             ],
           ),
         ),
-        errorBuilder: (context, error, child) {
+        errorBuilder: (context, error) {
           // Show a helpful message when the camera cannot start (e.g., Windows privacy settings)
           return Center(
             child: Padding(
