@@ -1,0 +1,13 @@
+{
+  "cli": {
+    "version": ">= 3.14.0"
+  },
+  "build": {
+    "debug-apk": {
+      "developmentClient": false,
+      "android": {
+        "buildType": "apk"
+      }
+    }
+  }
+}

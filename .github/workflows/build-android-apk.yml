@@ -1,0 +1,44 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: ["**", "main"]
+  pull_request:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: |
+          npm ci || npm install
+          npx expo install --non-interactive || true
+
+      - name: Verify Docker availability (for EAS local build)
+        run: docker --version
+
+      - name: Install EAS CLI
+        run: npm install --global eas-cli
+
+      - name: Build Android APK locally with EAS
+        env:
+          EXPO_NO_TELEMETRY: "1"
+        run: |
+          eas build --platform android --profile debug-apk --local --non-interactive --output app-debug.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug.apk
+          path: app-debug.apk
