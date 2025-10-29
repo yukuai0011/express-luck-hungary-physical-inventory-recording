@@ -304,8 +304,9 @@ class _HomePageState extends State<HomePage> {
 
   // --- Actions ---
   Future<void> _onScanQr() async {
-    if (!(Platform.isAndroid || Platform.isIOS)) {
-      await _info(context, 'Camera scanning is supported on Android/iOS only. Use Paste JSON.');
+    // Allow camera scanning on Android, iOS, and Windows (desktop)
+    if (!(Platform.isAndroid || Platform.isIOS || Platform.isWindows)) {
+      await _info(context, 'Camera scanning is supported on Android, iOS, and Windows. On this platform, use Paste JSON.');
       return;
     }
     String? text = await Navigator.push(
@@ -321,8 +322,9 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _onScanBarcode() async {
-    if (!(Platform.isAndroid || Platform.isIOS)) {
-      await _info(context, 'Camera scanning is supported on Android/iOS only. Type the package number.');
+    // Allow camera scanning on Android, iOS, and Windows (desktop)
+    if (!(Platform.isAndroid || Platform.isIOS || Platform.isWindows)) {
+      await _info(context, 'Camera scanning is supported on Android, iOS, and Windows. Type the package number on this platform.');
       return;
     }
     final code = await Navigator.push<String?>(
@@ -360,7 +362,7 @@ class _HomePageState extends State<HomePage> {
     if (orderNo.isNotEmpty && location.isNotEmpty && (recNo is num)) {
       _scannedInfo = {
         'orderNo': orderNo,
-        'recordingNo': (recNo as num).toInt(),
+        'recordingNo': recNo.toInt(),
         'locationCode': location,
       };
       return true;

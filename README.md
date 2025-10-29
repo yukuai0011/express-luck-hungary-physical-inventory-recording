@@ -79,8 +79,8 @@ No secrets or signing keys are required; artifacts are unsigned (debug/release w
 
 - All data is stored locally on the device using Hive.
 - No sensitive information is committed to this public repository.
-- Camera scanning uses `mobile_scanner` and is available on Android/iOS. On Windows, the app offers manual input/paste JSON fallback.
+- Camera scanning uses `mobile_scanner` and is available on Android, iOS, and Windows (desktop). If the camera can't be accessed on Windows, check Windows Privacy settings: Settings → Privacy & security → Camera → enable "Camera access" and "Let desktop apps access your camera".
 
 ## Notes
 
-- If you want desktop camera scanning later, we can explore platform-specific camera and decoding support, but the current build prioritizes Android/iOS scanning and Windows offline/manual workflows.
+- Desktop camera scanning is enabled on Windows. If you encounter issues, verify OS privacy toggles for Camera, confirm a webcam is connected, and ensure you run the EXE together with its adjacent DLLs from the packaged folder/ZIP.
