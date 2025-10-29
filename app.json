@@ -6,6 +6,10 @@
     "orientation": "portrait",
     "platforms": ["android"],
     "jsEngine": "hermes",
+    "splash": {
+      "backgroundColor": "#ffffff",
+      "resizeMode": "contain"
+    },
     "assetBundlePatterns": ["**/*"],
     "android": {
       "package": "com.expressluck.inventory",
