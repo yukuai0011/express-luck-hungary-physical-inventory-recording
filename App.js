@@ -1,19 +1,20 @@
 import React from 'react';
 import { SafeAreaView } from 'react-native';
-import { 
-  GluestackUIProvider, 
-  Box, 
-  Button, 
-  Text, 
-  Input, 
-  InputField, 
-  VStack, 
-  HStack 
+import {
+  GluestackUIProvider,
+  Box,
+  Button,
+  Text,
+  Input,
+  InputField,
+  VStack,
+  HStack,
 } from '@gluestack-ui/themed';
+import { config } from '@gluestack-ui/config';
 
 export default function App() {
   return (
-    <GluestackUIProvider>
+    <GluestackUIProvider config={config}>
       <SafeAreaView style={{ flex: 1 }}>
         <Box flex={1} p="$4" bg="$backgroundLight0" justifyContent="center" alignItems="center">
           <VStack space="md" w="100%" style={{ maxWidth: 480 }}>
