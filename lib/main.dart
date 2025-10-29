@@ -551,11 +551,26 @@ class _ScanViewState extends State<ScanView> {
         actions: [
           IconButton(
             icon: const Icon(Icons.cameraswitch),
-            onPressed: () => _controller.switchCamera(),
+            onPressed: () async {
+              try {
+                await _controller.switchCamera();
+              } catch (_) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No alternative camera available.')));
+              }
+            },
           ),
           IconButton(
             icon: const Icon(Icons.flash_on),
-            onPressed: () => _controller.toggleTorch(),
+            onPressed: () async {
+              try {
+                await _controller.toggleTorch();
+              } catch (_) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Torch not available on this device.')));
+                }
+              }
+            },
           ),
         ],
       ),
