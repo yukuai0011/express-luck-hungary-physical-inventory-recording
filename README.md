@@ -83,4 +83,8 @@ No secrets or signing keys are required; artifacts are unsigned (debug/release w
 
 ## Notes
 
-- Desktop camera scanning is enabled on Windows. If you encounter issues, verify OS privacy toggles for Camera, confirm a webcam is connected, and ensure you run the EXE together with its adjacent DLLs from the packaged folder/ZIP.
+- Desktop camera scanning is enabled on Windows. If you encounter issues:
+  - Verify OS privacy toggles for Camera are enabled (Settings → Privacy & security → Camera → enable "Camera access" and "Let desktop apps access your camera").
+  - Confirm a webcam is connected and works in the built‑in Camera app.
+  - If you're on Windows N/KN editions, install the Media Feature Pack (required for Media Foundation / camera).
+  - Run the EXE together with its adjacent DLLs from the packaged folder/ZIP (do not relocate the EXE alone).

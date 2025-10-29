@@ -583,7 +583,12 @@ class _ScanViewState extends State<ScanView> {
             children: const [
               SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 2.6)),
               SizedBox(height: 8),
-              Text('Starting camera…')
+              Text('Starting camera…'),
+              SizedBox(height: 12),
+              Text(
+                'If this takes more than a few seconds on Windows:\n\n• Check Settings → Privacy & security → Camera\n• Enable “Camera access” and “Let desktop apps access your camera”\n• Ensure a webcam is connected and works in the built-in Camera app\n• On Windows N/KN, install the Media Feature Pack',
+                textAlign: TextAlign.center,
+              ),
             ],
           ),
         ),
