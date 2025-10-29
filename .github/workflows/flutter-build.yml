@@ -109,7 +109,7 @@ jobs:
         shell: bash
 
       - name: Build Web (release)
-        run: flutter build web --release --pwa-strategy=none
+        run: flutter build web --release --web-renderer html --pwa-strategy=none
         shell: bash
 
       - name: Inject dynamic base-href (works locally and on GitHub Pages)
