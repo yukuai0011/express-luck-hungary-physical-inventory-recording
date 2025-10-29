@@ -561,6 +561,43 @@ class _ScanViewState extends State<ScanView> {
       ),
       body: MobileScanner(
         controller: _controller,
+        fit: BoxFit.cover,
+        placeholderBuilder: (context, child) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 2.6)),
+              SizedBox(height: 8),
+              Text('Starting camera…')
+            ],
+          ),
+        ),
+        errorBuilder: (context, error, child) {
+          // Show a helpful message when the camera cannot start (e.g., Windows privacy settings)
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const Icon(Icons.videocam_off, size: 40),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Camera unavailable',
+                    style: Theme.of(context).textTheme.titleMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '$error\n\nOn Windows, ensure Settings → Privacy & security → Camera → enable "Camera access" and "Let desktop apps access your camera".',
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
         onDetect: (capture) {
           if (_handled) return;
           final codes = capture.barcodes;
