@@ -1,0 +1,22 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Expo
+.expo/
+.expo-shared/
+
+# React Native prebuild outputs (generated in CI)
+android/
+ios/
+
+# Gradle
+.gradle/
+**/build/
+
+# Misc
+.DS_Store
+Thumbs.db

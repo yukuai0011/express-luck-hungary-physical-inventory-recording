@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "Inventory Scanner PoC",
+    "slug": "inventory-scanner-poc",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    
+    "updates": {
+      "enabled": false
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "permissions": ["CAMERA", "INTERNET"],
+      
+      "versionCode": 1,
+      "package": "com.expressluck.inventoryscannerpoc"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    }
+  }
+}
