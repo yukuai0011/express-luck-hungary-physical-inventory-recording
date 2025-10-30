@@ -5,7 +5,14 @@ import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 const config = {
   preprocess: vitePreprocess(),
   kit: {
-    adapter: adapter()
+    adapter: adapter({
+      // SPA fallback to support client-side routing for any path
+      fallback: 'index.html'
+    }),
+    // Disable prerendering of routes; rely on client-side navigation
+    prerender: {
+      entries: []
+    }
   }
 };
 
