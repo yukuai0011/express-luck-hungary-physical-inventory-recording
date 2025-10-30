@@ -351,7 +351,8 @@ class _HomePageState extends State<HomePage> {
       );
     }
     if (code != null && code.isNotEmpty) {
-      setState(() => _packageController.text = code.trim());
+      final v = code.trim();
+      setState(() => _packageController.text = v);
     }
   }
 
@@ -687,7 +688,7 @@ class _WindowsScanViewState extends State<WindowsScanView> {
         } catch (_) {}
       });
       final html = await rootBundle.loadString('assets/windows_scanner.html');
-      await _controller.loadStringContent(html, baseUrl: 'https://local.invalid');
+      await _controller.loadStringContent(html);
       setState(() => _initialized = true);
     } catch (e) {
       setState(() => _error = e.toString());
