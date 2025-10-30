@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { SafeAreaView, Modal, View, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { SafeAreaView, Modal, View, ScrollView, KeyboardAvoidingView, Platform, TextInput, Switch } from 'react-native';
 import { BarCodeScanner } from 'expo-barcode-scanner';
-import { GluestackUIProvider, Box, Text, VStack, HStack, Button, Input, Textarea, Checkbox } from '@gluestack-ui/themed';
+import { GluestackUIProvider, Box, Text, VStack, HStack, Button } from '@gluestack-ui/themed';
 import { config } from '@gluestack-ui/config';
 import { loadProfile, saveProfile, clearProfile } from './src/lib/storage';
 import { isObject, sanitizeEndpoint, uuidv4 } from './src/lib/utils';
@@ -257,21 +257,45 @@ function MainScreen() {
 
             <Box mt={8}>
               <Text bold>Paste JSON instead</Text>
-              <Textarea
+              <TextInput
                 placeholder='{"apiEndpoint":"<https://...>"} OR {"orderNo":"1234","recordingNo":1,"locationCode":"FG HU"}'
+                multiline
                 numberOfLines={4}
                 onChangeText={(t) => {
                   const obj = tryParseQrJson(t);
-                  if (obj) {
-                    handleQrObject(obj);
-                  }
+                  if (obj) handleQrObject(obj);
+                }}
+                style={{
+                  width: '100%',
+                  backgroundColor: 'rgba(255,255,255,0.06)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(255,255,255,0.16)',
+                  borderRadius: 8,
+                  color: '#e5e7eb',
+                  paddingHorizontal: 10,
+                  paddingVertical: 8
                 }}
               />
             </Box>
 
             <Box mt={8}>
               <Text bold>Advanced: Optional Bearer Token</Text>
-              <Input secureTextEntry placeholder="Bearer token (optional)" value={bearerToken} onChangeText={setBearerToken} />
+              <TextInput
+                secureTextEntry
+                placeholder="Bearer token (optional)"
+                value={bearerToken}
+                onChangeText={setBearerToken}
+                style={{
+                  width: '100%',
+                  backgroundColor: 'rgba(255,255,255,0.06)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(255,255,255,0.16)',
+                  borderRadius: 8,
+                  color: '#e5e7eb',
+                  paddingHorizontal: 10,
+                  paddingVertical: 8
+                }}
+              />
             </Box>
 
             <HStack space="sm" mt={8} flexWrap="wrap">
@@ -292,17 +316,31 @@ function MainScreen() {
             <Box>
               <Text bold>Package No</Text>
               <HStack space="sm" alignItems="center">
-                <Input flex={1} placeholder="Scan or type package number" value={packageNo} onChangeText={setPackageNo} />
+                <View style={{ flex: 1 }}>
+                  <TextInput
+                    placeholder="Scan or type package number"
+                    value={packageNo}
+                    onChangeText={setPackageNo}
+                    style={{
+                      width: '100%',
+                      backgroundColor: 'rgba(255,255,255,0.06)',
+                      borderWidth: 1,
+                      borderColor: 'rgba(255,255,255,0.16)',
+                      borderRadius: 8,
+                      color: '#e5e7eb',
+                      paddingHorizontal: 10,
+                      paddingVertical: 8
+                    }}
+                  />
+                </View>
                 <Button onPress={() => openScanner('barcode')}>Scan Barcode</Button>
               </HStack>
             </Box>
 
             <Box>
               <HStack space="sm" alignItems="center">
-                <Checkbox isChecked={pkgIntact} onChange={setPkgIntact}>
-                  <Checkbox.Indicator />
-                  <Checkbox.Label>Package intact</Checkbox.Label>
-                </Checkbox>
+                <Switch value={pkgIntact} onValueChange={setPkgIntact} />
+                <Text>Package intact</Text>
               </HStack>
             </Box>
 
@@ -310,12 +348,25 @@ function MainScreen() {
               <Text bold>Quantity</Text>
               <HStack space="sm" alignItems="center">
                 <Button variant="outline" onPress={() => { if (!pkgIntact) setQuantity(String(Math.max(0, Number(quantity || 0) - 1))); }}>−</Button>
-                <Input
-                  keyboardType="numeric"
-                  value={quantity}
-                  onChangeText={(t) => setQuantity(t.replace(/[^0-9]/g, ''))}
-                  isDisabled={pkgIntact}
-                />
+                <View style={{ flex: 1 }}>
+                  <TextInput
+                    keyboardType="numeric"
+                    value={quantity}
+                    onChangeText={(t) => setQuantity(t.replace(/[^0-9]/g, ''))}
+                    editable={!pkgIntact}
+                    style={{
+                      width: '100%',
+                      backgroundColor: 'rgba(255,255,255,0.06)',
+                      borderWidth: 1,
+                      borderColor: 'rgba(255,255,255,0.16)',
+                      borderRadius: 8,
+                      color: '#e5e7eb',
+                      paddingHorizontal: 10,
+                      paddingVertical: 8,
+                      opacity: pkgIntact ? 0.6 : 1
+                    }}
+                  />
+                </View>
                 <Button variant="outline" onPress={() => { if (!pkgIntact) setQuantity(String(Math.max(0, Number(quantity || 0) + 1))); }}>+</Button>
               </HStack>
               <Text color="#94a3b8" mt={4}>Disabled when Package intact is checked. In that case, your cloud default will be used.</Text>
