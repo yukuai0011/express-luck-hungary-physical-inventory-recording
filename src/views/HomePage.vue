@@ -35,7 +35,7 @@
                   <ion-label>Paste JSON instead</ion-label>
                 </ion-item>
                 <div class="ion-padding" slot="content">
-                  <ion-textarea auto-grow fill="outline" :value="pasteText" @ionInput="e => pasteText = (e.target as HTMLTextAreaElement).value" :rows="4" placeholder='{"apiEndpoint":"<https://...>"} OR {"orderNo":"1234","recordingNo":1,"locationCode":"FG HU"}'></ion-textarea>
+                  <ion-textarea auto-grow fill="outline" v-model="pasteText" :rows="4" placeholder='{"apiEndpoint":"<https://...>"} OR {"orderNo":"1234","recordingNo":1,"locationCode":"FG HU"}'></ion-textarea>
                   <div class="ion-margin-top">
                     <ion-button fill="outline" @click="detectPaste">Detect</ion-button>
                   </div>
@@ -323,8 +323,7 @@ async function stopScan() {
     if (reader) { reader.reset(); reader = null; }
     if (videoRef.value) {
       try { videoRef.value.pause(); } catch {}
-      // @ts-expect-error clear stream
-      videoRef.value.srcObject = null;
+      (videoRef.value as any).srcObject = null;
     }
     if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
   } finally {
