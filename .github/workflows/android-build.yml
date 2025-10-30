@@ -3,9 +3,6 @@ name: Build Android APK (Expo Prebuild)
 on:
   workflow_dispatch:
   push:
-    paths:
-      - 'express-luck-hungary-physical-inventory-recording-public/**'
-      - 'express-luck-hungary-physical-inventory-recording-public/.github/workflows/android-build.yml'
 
 jobs:
   build-android:
