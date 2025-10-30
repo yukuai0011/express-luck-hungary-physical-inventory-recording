@@ -1,0 +1,42 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java (required for Android SDK)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install .NET MAUI workloads
+        run: |
+          dotnet workload restore
+          dotnet workload install maui
+
+      - name: Restore NuGet packages
+        run: dotnet restore ./ExpressLuckMaui.csproj
+
+      - name: Build and publish Android APK (Release)
+        run: |
+          dotnet publish ./ExpressLuckMaui.csproj -f net8.0-android -c Release -o ./artifacts /p:AndroidPackageFormat=apk /p:AndroidSupportedAbis=arm64-v8a;armeabi-v7a
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: android-apk
+          path: artifacts

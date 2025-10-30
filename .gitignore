@@ -1,0 +1,15 @@
+bin/
+obj/
+*.user
+.vs/
+.vscode/
+*.apk
+*.aab
+artifacts/
+*.pdb
+*.suo
+*.userprefs
+*.local
+_ReSharper*/
+nupkg/
+.nuget/

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="ExpressLuckMaui.MainPage"
+             Title="Express Luck">
+    <StackLayout Padding="20" Spacing="12">
+        <Label Text="Express Luck Hungary - Physical Inventory Recording" FontSize="18" HorizontalOptions="Center" />
+        <Label Text="This is a placeholder MAUI app converted from the original Node/Express app." />
+    </StackLayout>
+</ContentPage>
