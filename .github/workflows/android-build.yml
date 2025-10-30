@@ -24,6 +24,14 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Add Android platform (Capacitor)
+        run: |
+          if [ -d android ]; then
+            echo "Android platform already exists"
+          else
+            npx cap add android
+          fi
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -56,6 +64,7 @@ jobs:
 
       - name: Build Android (Debug APK)
         run: |
+          chmod +x android/gradlew || true
           cd android
           ./gradlew assembleDebug
 
