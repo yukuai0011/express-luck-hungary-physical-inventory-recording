@@ -4,6 +4,10 @@
     "slug": "inventory-scanner-poc",
     "version": "1.0.0",
     "orientation": "portrait",
+    "splash": {
+      "backgroundColor": "#0f172a",
+      "resizeMode": "contain"
+    },
     
     "updates": {
       "enabled": false
