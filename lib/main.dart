@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io' show Platform; // guard for mobile vs desktop
+import 'dart:io' show Platform, HttpServer, InternetAddress; // guard for mobile vs desktop and local server
 import 'package:flutter/services.dart' show rootBundle; // for loading HTML asset
 
 import 'package:flutter/foundation.dart';
@@ -665,6 +665,8 @@ class _WindowsScanViewState extends State<WindowsScanView> {
   final WebviewController _controller = WebviewController();
   bool _initialized = false;
   String? _error;
+  HttpServer? _server;
+  Uri? _serverUrl;
 
   @override
   void initState() {
@@ -687,12 +689,39 @@ class _WindowsScanViewState extends State<WindowsScanView> {
           }
         } catch (_) {}
       });
+      // Serve the scanner HTML over localhost to ensure a secure context for getUserMedia
+      // (navigator.mediaDevices is undefined on data: URLs and other insecure contexts)
+      _server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
       final html = await rootBundle.loadString('assets/windows_scanner.html');
-      await _controller.loadStringContent(html);
+      _server!.listen((req) async {
+        try {
+          if (req.method != 'GET' || req.uri.path != '/' && req.uri.path != '/index.html') {
+            req.response.statusCode = 404;
+            await req.response.close();
+            return;
+          }
+          req.response.headers.set('Content-Type', 'text/html; charset=utf-8');
+          req.response.write(html);
+          await req.response.close();
+        } catch (_) {
+          try { await req.response.close(); } catch (_) {}
+        }
+      });
+      _serverUrl = Uri.parse('http://127.0.0.1:${_server!.port}/');
+      // Navigate WebView2 to the local secure-origin URL
+      await _controller.loadUrl(_serverUrl.toString());
       setState(() => _initialized = true);
     } catch (e) {
       setState(() => _error = e.toString());
     }
+  }
+
+  @override
+  void dispose() {
+    // Close the local server and dispose the webview controller
+    _server?.close(force: true);
+    _controller.dispose();
+    super.dispose();
   }
 
   @override

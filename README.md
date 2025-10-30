@@ -79,10 +79,13 @@ No secrets or signing keys are required; artifacts are unsigned (debug/release w
 
 - All data is stored locally on the device using Hive.
 - No sensitive information is committed to this public repository.
-- Camera scanning uses `mobile_scanner` on Android/iOS. On Windows desktop, the app uses a WebView2-based scanner powered by ZXing (JS) for reliable camera access across devices. If the camera can't be accessed on Windows:
+- Camera scanning uses `mobile_scanner` on Android/iOS.
+- On Windows desktop, the app uses a WebView2-based scanner powered by ZXing (JS). To satisfy browser security requirements for camera access (`navigator.mediaDevices.getUserMedia` requires a secure context), the app serves the scanner page from a local loopback address (http://127.0.0.1:<dynamic-port>/) and loads it in WebView2. This is considered a secure/trustworthy origin for getUserMedia.
+  - You may see a small WebView2 permission prompt to allow camera access near the top edge of the window. Click Allow.
+  - If you previously saw an error like "Cannot read properties of undefined (reading 'getUserMedia')", update to the latest build where the scanner runs from a secure origin.
   - Settings → Privacy & security → Camera → enable "Camera access" and "Let desktop apps access your camera".
   - Ensure Microsoft Edge WebView2 Runtime is installed (preinstalled on most systems). If missing, install from Microsoft.
-  - If your environment is offline, the embedded scanner loads ZXing from a CDN. Connect to the Internet or we can embed the library locally as a follow-up.
+  - If your environment is offline, the embedded scanner currently loads ZXing from a CDN. Connect to the Internet or we can embed the library locally as a follow-up.
 
 ## Notes
 
