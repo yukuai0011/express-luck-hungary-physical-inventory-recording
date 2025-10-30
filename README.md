@@ -79,7 +79,10 @@ No secrets or signing keys are required; artifacts are unsigned (debug/release w
 
 - All data is stored locally on the device using Hive.
 - No sensitive information is committed to this public repository.
-- Camera scanning uses `mobile_scanner` and is available on Android, iOS, and Windows (desktop). If the camera can't be accessed on Windows, check Windows Privacy settings: Settings → Privacy & security → Camera → enable "Camera access" and "Let desktop apps access your camera".
+- Camera scanning uses `mobile_scanner` on Android/iOS. On Windows desktop, the app uses a WebView2-based scanner powered by ZXing (JS) for reliable camera access across devices. If the camera can't be accessed on Windows:
+  - Settings → Privacy & security → Camera → enable "Camera access" and "Let desktop apps access your camera".
+  - Ensure Microsoft Edge WebView2 Runtime is installed (preinstalled on most systems). If missing, install from Microsoft.
+  - If your environment is offline, the embedded scanner loads ZXing from a CDN. Connect to the Internet or we can embed the library locally as a follow-up.
 
 ## Notes
 
