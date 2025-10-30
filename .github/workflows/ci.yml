@@ -6,10 +6,6 @@ on:
   pull_request:
     branches: [ "**" ]
 
-defaults:
-  run:
-    working-directory: ./express-luck-hungary-physical-inventory-recording-public
-
 jobs:
   build-web:
     runs-on: ubuntu-latest
@@ -35,4 +31,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: web-dist
-          path: ./express-luck-hungary-physical-inventory-recording-public/web-dist
+          path: web-dist
