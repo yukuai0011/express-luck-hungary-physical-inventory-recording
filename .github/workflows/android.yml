@@ -24,15 +24,25 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android SDK
+      - name: Setup Android SDK (cmdline-tools + base)
         uses: android-actions/setup-android@v3
         with:
-          # Install platform/tools, build-tools, platform API level, and NDK
-          packages: |
-            platform-tools
-            platforms;android-34
-            build-tools;34.0.0
-            ndk;26.2.11394342
+          # We'll install specific packages with sdkmanager below
+          packages: ''
+
+      - name: Install Android SDK packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager --list || true
+          yes | sdkmanager --licenses
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;26.2.11394342"
+
+      - name: Set ANDROID_HOME and NDK_HOME
+        shell: bash
+        run: |
+          echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
+          echo "NDK_HOME=$ANDROID_SDK_ROOT/ndk/$(ls -1 "$ANDROID_SDK_ROOT/ndk" | head -n 1)" >> $GITHUB_ENV
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -48,9 +58,6 @@ jobs:
           npx tauri android init --ci --force
 
       - name: Build Android APK (release)
-        env:
-          NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
-          ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
         run: |
           npx tauri android build -- --release
 
