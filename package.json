@@ -12,6 +12,7 @@
     "build:web": "expo export --platform web --output-dir web-dist"
   },
   "dependencies": {
+    "@expo/metro-runtime": "~3.2.3",
     "@gluestack-style/react": "^1.0.0",
     "@gluestack-ui/config": "^1.0.0",
     "@gluestack-ui/themed": "^1.1.0",
