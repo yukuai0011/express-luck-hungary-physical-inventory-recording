@@ -1,0 +1,26 @@
+i want you to write a concept proof webpage which will be deployed on the github page. the app will be an inventory scanner app. It will allow recording profile saving feature. To establish recording profile, the user will be required to sue the app to scan 2 QR code in any order, one contain the api endpoint information. the other contain other information like the location order no etc.
+format of the json file will be provided below
+
+```json
+{
+    "apiEndpoint": "<https://default85b96939dee04f98be515ec07d81f9.a1.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/de46591f69e24c76abba6d766e447308/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=65m7cZicGK_JXKFiInOyfAZjPeN1XHJdNCek4SLjI6w>"
+}
+
+```
+
+```json
+{"orderNo":"1234","recordingNo":1,"locationCode":"FG HU"}
+
+```
+
+a profile can be saved as cookie in json format, basically the combination of the 2 json file above..
+
+after a profile has been created, the profile can be used to work.
+
+in the work section, it will require user to enter package no. the package no can also be auto filled by using bar code scanning. the bar code is just the package number, nothing fancy.
+
+the package intact tick box.
+
+the quantity, default 0, and has a plus and minus button nearby, if the package intact is ticked, this field will be gray out and not allow to be change, as we will use the default value of the package in our cloud.
+
+it should  have a submit button, if the submit button is clicked, a http request will be sent. the sample http request has been provided to you as a python script.

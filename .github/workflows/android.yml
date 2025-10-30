@@ -1,0 +1,75 @@
+name: Build Android APK (Tauri)
+
+on:
+  push:
+    branches:
+      - '**'
+  workflow_dispatch: {}
+
+jobs:
+  android-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Setup Java (JDK 17)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          # Install platform/tools, build-tools, platform API level, and NDK
+          packages: |
+            platform-tools
+            platforms;android-34
+            build-tools;34.0.0
+            ndk;26.2.11394342
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android
+
+      - name: Install app dependencies
+        run: |
+          npm install
+
+      - name: Initialize Android project (Tauri)
+        run: |
+          npx tauri android init --ci --force
+
+      - name: Build Android APK (release)
+        env:
+          NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
+          ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
+        run: |
+          npx tauri android build -- --release
+
+      - name: Locate APK
+        id: apk
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=$(ls -1 src-tauri/gen/android/app/build/outputs/apk/release/*.apk | head -n 1 || true)
+          if [ -z "$APK" ]; then
+            # Fallback to debug if release not found
+            APK=$(ls -1 src-tauri/gen/android/app/build/outputs/apk/debug/*.apk | head -n 1)
+            echo "path=$APK" >> $GITHUB_OUTPUT
+          else
+            echo "path=$APK" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-apk
+          path: ${{ steps.apk.outputs.path }}
