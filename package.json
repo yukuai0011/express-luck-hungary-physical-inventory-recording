@@ -11,8 +11,8 @@
     "tauri:build": "tauri build"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.0.0",
-    "@tauri-apps/plugin-barcode-scanner": "^2.0.0",
+    "@tauri-apps/api": "2.0.0",
+    "@tauri-apps/plugin-barcode-scanner": "2.0.0",
     "@zxing/browser": "^0.1.4",
     "daisyui": "^4.12.10",
     "svelte": "^5.0.0"
