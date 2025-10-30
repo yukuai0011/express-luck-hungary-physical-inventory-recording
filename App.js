@@ -123,11 +123,30 @@ function MainScreen() {
     if (scanMode === 'qr') {
       const obj = tryParseQrJson(data);
       if (!obj) return; // keep scanning until JSON
-      const ok = handleQrObject(obj);
-      if (!ok) return; // keep scanning until structure recognized
-      if (scannedApi && scannedInfo) {
-        setScanVisible(false);
+      let nextApi = scannedApi;
+      let nextInfo = scannedInfo;
+      // compute next state synchronously
+      if (obj && typeof obj.apiEndpoint === 'string') {
+        nextApi = sanitizeEndpoint(obj.apiEndpoint);
+        if (nextApi !== scannedApi) setScannedApi(nextApi);
+      } else if (obj && (obj.orderNo || obj.locationCode || obj.recordingNo !== undefined)) {
+        const orderNo = String(obj.orderNo || '').trim();
+        const locationCode = String(obj.locationCode || '').trim();
+        const recordingNo = Number(obj.recordingNo);
+        if (orderNo && locationCode && Number.isFinite(recordingNo)) {
+          const info = { orderNo, locationCode, recordingNo };
+          nextInfo = info;
+          // shallow compare
+          if (!scannedInfo || scannedInfo.orderNo !== info.orderNo || scannedInfo.locationCode !== info.locationCode || scannedInfo.recordingNo !== info.recordingNo) {
+            setScannedInfo(info);
+          }
+        } else {
+          return; // not recognized, keep scanning
+        }
+      } else {
+        return; // unknown object
       }
+      if (nextApi && nextInfo) setScanVisible(false);
     } else {
       setPackageNo(String(data || '').trim());
       setScanVisible(false);
