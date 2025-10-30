@@ -13,8 +13,8 @@
   },
   "dependencies": {
     "@expo/metro-runtime": "~3.2.3",
-    "@react-native-aria/dialog": "^0.3.0",
-    "@react-native-aria/overlays": "^0.3.0",
+    "@react-native-aria/dialog": "*",
+    "@react-native-aria/overlays": "*",
     "@gluestack-style/react": "^1.0.0",
     "@gluestack-ui/config": "^1.0.0",
     "@gluestack-ui/themed": "^1.1.0",
