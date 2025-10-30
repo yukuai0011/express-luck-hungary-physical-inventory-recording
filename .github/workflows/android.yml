@@ -1,0 +1,92 @@
+name: Build Android APK (All Branches)
+
+on:
+  push:
+    branches:
+      - '**'
+  workflow_dispatch: {}
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install web dependencies
+        working-directory: uniappx-app
+        run: pnpm install
+
+      - name: Fetch Cool Unix uni_modules
+        working-directory: uniappx-app
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p uni_modules
+          # Clone the official scaffold to extract uni_modules/cool-unix
+          git clone --depth 1 https://gitee.com/cool-team-official/cool-unix cool-unix-src
+          if [ -d cool-unix-src/uni_modules/cool-unix ]; then
+            rm -rf uni_modules/cool-unix
+            cp -R cool-unix-src/uni_modules/cool-unix uni_modules/cool-unix
+          else
+            echo "cool-unix uni_modules not found in upstream repo" >&2
+            exit 1
+          fi
+          rm -rf cool-unix-src
+
+      - name: Build H5 site
+        working-directory: uniappx-app
+        run: pnpm run build:h5
+
+      - name: Copy H5 to Android assets
+        run: |
+          mkdir -p android/app/src/main/assets/webapp
+          # Uni build outputs H5 under dist/build/h5 by default
+          rsync -a --delete uniappx-app/dist/build/h5/ android/app/src/main/assets/webapp/
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install SDKMAN and Gradle
+        shell: bash
+        run: |
+          curl -s "https://get.sdkman.io" | bash
+          source "$HOME/.sdkman/bin/sdkman-init.sh"
+          sdk install gradle 8.6
+          echo "GRADLE_HOME=$(dirname $(dirname $(readlink -f $(command -v gradle))))" >> $GITHUB_ENV
+
+      - name: Generate Gradle wrapper
+        working-directory: android
+        env:
+          GRADLE_USER_HOME: ${{ runner.temp }}/gradle
+        run: |
+          source "$HOME/.sdkman/bin/sdkman-init.sh"
+          gradle wrapper --gradle-version 8.6
+
+      - name: Build debug APK
+        working-directory: android
+        env:
+          GRADLE_USER_HOME: ${{ runner.temp }}/gradle
+        run: |
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk

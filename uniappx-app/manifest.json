@@ -1,0 +1,14 @@
+{
+  "name": "Express Luck Inventory",
+  "appid": "__UNI__EXPRESS_LUCK_INV",
+  "description": "Physical Inventory Recording App",
+  "versionName": "0.1.0",
+  "versionCode": "100",
+  "transformPx": false,
+  "h5": {
+    "title": "Express Luck Inventory",
+    "router": {
+      "mode": "hash"
+    }
+  }
+}
