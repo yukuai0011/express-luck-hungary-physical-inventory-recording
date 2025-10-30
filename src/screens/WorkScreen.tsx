@@ -138,8 +138,11 @@ export default function WorkScreen({ onGoProfile }: Props) {
       </Box>
 
       <Box>
-        <CheckboxGroup>
-          <Checkbox value="intact" isChecked={intact} onChange={setIntact}>
+        <CheckboxGroup
+          value={intact ? ['intact'] : []}
+          onChange={(values: string[]) => setIntact(values.indexOf('intact') !== -1)}
+        >
+          <Checkbox value="intact">
             <CheckboxIndicator><CheckboxIcon /></CheckboxIndicator>
             <CheckboxLabel ml={8}>Package intact</CheckboxLabel>
           </Checkbox>
