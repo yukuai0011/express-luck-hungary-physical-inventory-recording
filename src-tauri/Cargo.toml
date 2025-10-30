@@ -3,6 +3,10 @@ name = "express-luck-inventory"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+# Required for Android builds; produces a library artifact the mobile wrapper links against
+crate-type = ["staticlib", "cdylib", "rlib"]
+
 [build-dependencies]
 tauri-build = { version = "2.0.0", features = [] }
 
