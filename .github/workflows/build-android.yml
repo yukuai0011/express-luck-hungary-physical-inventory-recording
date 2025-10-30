@@ -17,7 +17,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '11'
+          java-version: '17'
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -37,7 +37,7 @@ jobs:
           dotnet publish ./ExpressLuckMaui.csproj -f net8.0-android -c Release -o ./artifacts /p:AndroidPackageFormat=apk /p:AndroidSupportedAbis=arm64-v8a;armeabi-v7a
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: android-apk
           path: artifacts
