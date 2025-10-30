@@ -7,9 +7,6 @@ on:
 jobs:
   build-android:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: express-luck-hungary-physical-inventory-recording-public
 
     steps:
       - name: Checkout
@@ -41,7 +38,7 @@ jobs:
 
       - name: Ensure compatible Expo packages installed
         run: |
-          npx expo install expo-barcode-scanner @react-native-async-storage/async-storage @gluestack-ui/themed @gluestack-ui/config react-native-svg
+          npx expo install expo-barcode-scanner @react-native-async-storage/async-storage @gluestack-ui/themed @gluestack-ui/config react-native-svg react-native-safe-area-context
         env:
           EXPO_NO_TELEMETRY: '1'
 
