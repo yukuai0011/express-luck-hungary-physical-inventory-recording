@@ -35,7 +35,17 @@
         throw new Error('Camera permission not granted');
       }
       usingPlugin = true;
-      const formats = kind === 'qr' ? [Format.QRCode] : [Format.EAN13, Format.Code128, Format.Code39, Format.UpcA, Format.UpcE, Format.EAN8, Format.ITF];
+      const formats = kind === 'qr'
+        ? [Format.QRCode]
+        : [
+            Format.EAN13,
+            Format.Code128,
+            Format.Code39,
+            Format.UPC_A,
+            Format.UPC_E,
+            Format.EAN8,
+            Format.ITF
+          ];
       const result = await scan({ windowed: true, formats });
       if (result && result.content) {
         dispatch('result', { text: result.content });
