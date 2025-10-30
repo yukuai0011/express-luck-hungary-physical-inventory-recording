@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io' show Platform; // guard for mobile vs desktop
+import 'package:flutter/services.dart' show rootBundle; // for loading HTML asset
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +8,8 @@ import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:mobile_scanner/mobile_scanner.dart';
+// Windows-only webview scanner
+import 'package:webview_windows/webview_windows.dart';
 
 // Boxes / keys
 const String kBoxSettings = 'settings';
@@ -309,10 +312,18 @@ class _HomePageState extends State<HomePage> {
       await _info(context, 'Camera scanning is supported on Android, iOS, and Windows. On this platform, use Paste JSON.');
       return;
     }
-    String? text = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const ScanView(title: 'Scan QR')),
-    );
+    String? text;
+    if (Platform.isWindows) {
+      text = await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const WindowsScanView(title: 'Scan QR')),
+      );
+    } else {
+      text = await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const ScanView(title: 'Scan QR')),
+      );
+    }
     if (text == null || text.isEmpty) return;
     final ok = _handleQrText(text);
     if (!ok && mounted) {
@@ -327,10 +338,18 @@ class _HomePageState extends State<HomePage> {
       await _info(context, 'Camera scanning is supported on Android, iOS, and Windows. Type the package number on this platform.');
       return;
     }
-    final code = await Navigator.push<String?>(
-      context,
-      MaterialPageRoute(builder: (_) => const ScanView(title: 'Scan Package Barcode')),
-    );
+    String? code;
+    if (Platform.isWindows) {
+      code = await Navigator.push<String?>(
+        context,
+        MaterialPageRoute(builder: (_) => const WindowsScanView(title: 'Scan Package Barcode')),
+      );
+    } else {
+      code = await Navigator.push<String?>(
+        context,
+        MaterialPageRoute(builder: (_) => const ScanView(title: 'Scan Package Barcode')),
+      );
+    }
     if (code != null && code.isNotEmpty) {
       setState(() => _packageController.text = code.trim());
     }
@@ -628,6 +647,67 @@ class _ScanViewState extends State<ScanView> {
           Navigator.pop(context, raw);
         },
       ),
+    );
+  }
+}
+
+// Windows-specific scanner using WebView2 + ZXing JS
+class WindowsScanView extends StatefulWidget {
+  final String title;
+  const WindowsScanView({super.key, required this.title});
+
+  @override
+  State<WindowsScanView> createState() => _WindowsScanViewState();
+}
+
+class _WindowsScanViewState extends State<WindowsScanView> {
+  final WebviewController _controller = WebviewController();
+  bool _initialized = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+
+  Future<void> _init() async {
+    try {
+      await _controller.initialize();
+      _controller.webMessage.listen((event) {
+        try {
+          final obj = event.contentJson as Map?;
+          final type = obj?['type']?.toString();
+          if (type == 'scan') {
+            final text = obj?['text']?.toString();
+            if (text != null && text.isNotEmpty && mounted) {
+              Navigator.pop(context, text);
+            }
+          }
+        } catch (_) {}
+      });
+      final html = await rootBundle.loadString('assets/windows_scanner.html');
+      await _controller.loadStringContent(html, baseUrl: 'https://local.invalid');
+      setState(() => _initialized = true);
+    } catch (e) {
+      setState(() => _error = e.toString());
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(widget.title)),
+      body: _error != null
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text('Failed to start scanner: $_error\n\nTips:\n• Ensure Windows Camera privacy toggles are enabled.\n• If an in-webview permission prompt appears, allow camera.\n• Check that Microsoft Edge WebView2 Runtime is installed.'),
+              ),
+            )
+          : !_initialized
+              ? const Center(child: SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 2.6)))
+              : Webview(_controller),
     );
   }
 }

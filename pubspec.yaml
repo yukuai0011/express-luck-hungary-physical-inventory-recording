@@ -15,9 +15,8 @@ dependencies:
   csv: ^6.0.0
   http: ^1.2.0
   mobile_scanner: ^7.1.3
-  # Required for Windows desktop camera support (not an endorsed implementation of 'camera')
-  camera_windows: ^0.2.6+2
   connectivity_plus: ^6.0.0
+  webview_windows: ^0.4.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -25,3 +24,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/windows_scanner.html
