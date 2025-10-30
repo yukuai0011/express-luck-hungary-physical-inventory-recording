@@ -54,7 +54,7 @@ jobs:
         run: npx -y @tauri-apps/cli@^2 --version
 
       - name: Initialize Android project (first run)
-        run: npx tauri android init --ci --force
+        run: npx tauri android init --ci
         env:
           NDK_HOME: ${{ steps.setup-ndk.outputs.NDK_HOME }}
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.NDK_HOME }}
