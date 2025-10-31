@@ -7,6 +7,7 @@ import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'windows_scan_view.dart' show WindowsScanView;
 
 // Boxes / keys
 const String kBoxSettings = 'settings';
@@ -304,14 +305,21 @@ class _HomePageState extends State<HomePage> {
 
   // --- Actions ---
   Future<void> _onScanQr() async {
-    if (!(Platform.isAndroid || Platform.isIOS)) {
-      await _info(context, 'Camera scanning is supported on Android/iOS only. Use Paste JSON.');
+    String? text;
+    if (Platform.isAndroid || Platform.isIOS) {
+      text = await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const ScanView(title: 'Scan QR')),
+      );
+    } else if (Platform.isWindows) {
+      text = await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const WindowsScanView(title: 'Scan QR')),
+      );
+    } else {
+      await _info(context, 'Camera scanning is not supported on this platform. Use Paste JSON.');
       return;
     }
-    String? text = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const ScanView(title: 'Scan QR')),
-    );
     if (text == null || text.isEmpty) return;
     final ok = _handleQrText(text);
     if (!ok && mounted) {
@@ -321,16 +329,25 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _onScanBarcode() async {
-    if (!(Platform.isAndroid || Platform.isIOS)) {
-      await _info(context, 'Camera scanning is supported on Android/iOS only. Type the package number.');
+    String? code;
+    if (Platform.isAndroid || Platform.isIOS) {
+      code = await Navigator.push<String?>(
+        context,
+        MaterialPageRoute(builder: (_) => const ScanView(title: 'Scan Package Barcode')),
+      );
+    } else if (Platform.isWindows) {
+      // On Windows we currently support QR decoding. If package codes are QR, it will work.
+      // For 1D barcodes, fallback to manual input for now.
+      code = await Navigator.push<String?>(
+        context,
+        MaterialPageRoute(builder: (_) => const WindowsScanView(title: 'Scan Package')),
+      );
+    } else {
+      await _info(context, 'Camera scanning is not supported on this platform. Type the package number.');
       return;
     }
-    final code = await Navigator.push<String?>(
-      context,
-      MaterialPageRoute(builder: (_) => const ScanView(title: 'Scan Package Barcode')),
-    );
     if (code != null && code.isNotEmpty) {
-      setState(() => _packageController.text = code.trim());
+      setState(() => _packageController.text = code!.trim());
     }
   }
 
@@ -360,7 +377,7 @@ class _HomePageState extends State<HomePage> {
     if (orderNo.isNotEmpty && location.isNotEmpty && (recNo is num)) {
       _scannedInfo = {
         'orderNo': orderNo,
-        'recordingNo': (recNo as num).toInt(),
+        'recordingNo': (recNo).toInt(),
         'locationCode': location,
       };
       return true;
