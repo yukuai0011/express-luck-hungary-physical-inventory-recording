@@ -55,7 +55,7 @@ jobs:
 
       - name: Build Android (APK)
         run: |
-          dx build --bundle android --json-output --verbose | tee build.log
+          dx build --android --json-output --verbose | tee build.log
 
       - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
