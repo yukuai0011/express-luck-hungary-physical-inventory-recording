@@ -38,7 +38,7 @@
         </StackLayout>
         <StackLayout orientation="horizontal" class="mt-8">
           <Label text="Package intact" />
-          <Switch id="packageIntact" checked="true" />
+          <Switch id="packageIntact" checked="true" checkedChange="onPackageIntactChanged" />
         </StackLayout>
         <Label text="Quantity" class="mt-8" />
         <StackLayout orientation="horizontal">

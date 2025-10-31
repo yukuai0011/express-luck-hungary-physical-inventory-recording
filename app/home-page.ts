@@ -344,3 +344,7 @@ function validateBeforeSubmit() {
     }
   };
 }
+
+export function onPackageIntactChanged() {
+  updateQtyDisabled();
+}
