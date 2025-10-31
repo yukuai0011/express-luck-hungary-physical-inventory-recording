@@ -50,14 +50,14 @@ jobs:
         run: |
           rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android i686-linux-android
 
-      - name: Bundle Android APK
+      - name: Build Android (APK)
         run: |
-          dx bundle --platform android --package-types apk --json-output --verbose | tee bundle.log
+          dx build --bundle android --json-output --verbose | tee build.log
 
       - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
           name: inventory-scanner-apk
           path: |
-            target/dx/**/bundle/android/**/*.apk
+            target/dx/*/debug/android/app/build/outputs/apk/**/*.apk
           retention-days: 30
