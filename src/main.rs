@@ -1,4 +1,5 @@
 use dioxus::prelude::*;
+#[cfg(target_arch = "wasm32")]
 use gloo_storage::{LocalStorage, Storage};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -26,6 +27,7 @@ struct Payload {
 const PROFILE_KEY: &str = "inventoryProfile";
 
 fn main() {
+    #[cfg(target_arch = "wasm32")]
     console_error_panic_hook::set_once();
     dioxus::launch(App);
 }
@@ -57,15 +59,23 @@ fn App() -> Element {
     }
 }
 
-fn load_profile() -> Option<Profile> {
-    LocalStorage::get(PROFILE_KEY).ok()
-}
+#[cfg(target_arch = "wasm32")]
+fn load_profile() -> Option<Profile> { LocalStorage::get(PROFILE_KEY).ok() }
 
-fn save_profile(p: &Profile) {
-    let _ = LocalStorage::set(PROFILE_KEY, p);
-}
+#[cfg(not(target_arch = "wasm32"))]
+fn load_profile() -> Option<Profile> { None }
 
+#[cfg(target_arch = "wasm32")]
+fn save_profile(p: &Profile) { let _ = LocalStorage::set(PROFILE_KEY, p); }
+
+#[cfg(not(target_arch = "wasm32"))]
+fn save_profile(_p: &Profile) { /* no-op on non-wasm host */ }
+
+#[cfg(target_arch = "wasm32")]
 fn clear_profile() { let _ = LocalStorage::delete(PROFILE_KEY); }
+
+#[cfg(not(target_arch = "wasm32"))]
+fn clear_profile() { /* no-op on non-wasm host */ }
 
 #[component]
 fn ProfileView() -> Element {
