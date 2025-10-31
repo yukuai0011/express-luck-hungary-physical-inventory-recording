@@ -1,0 +1,17 @@
+{
+  "name": "express-luck-hungary-physical-inventory-recording",
+  "version": "0.1.0",
+  "private": true,
+  "main": "app/app.ts",
+  "scripts": {
+    "build:android": "ns build android --noHmr"
+  },
+  "dependencies": {
+    "@nativescript/core": "~8.9.0",
+    "nativescript-barcodescanner": "^4.2.2"
+  },
+  "devDependencies": {
+    "@nativescript/android": "~8.9.0",
+    "typescript": "~5.4.0"
+  }
+}

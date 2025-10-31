@@ -1,0 +1,63 @@
+name: Android APK (NativeScript)
+
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install NativeScript CLI
+        run: npm i -g nativescript
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+      - name: Build Android (Debug)
+        run: ns build android --noHmr
+
+      - name: Locate APK
+        id: locate
+        run: |
+          set -e
+          APK=""
+          if [ -f platforms/android/app/build/outputs/apk/debug/app-debug.apk ]; then
+            APK=platforms/android/app/build/outputs/apk/debug/app-debug.apk
+          else
+            APK=$(ls -1 platforms/android/app/build/outputs/apk/**/*.apk 2>/dev/null | head -n 1 || true)
+          fi
+          if [ -z "$APK" ]; then
+            echo "APK not found" >&2
+            ls -R platforms/android/app/build/outputs || true
+            exit 1
+          fi
+          echo "apk=$APK" >> $GITHUB_OUTPUT
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug.apk
+          path: ${{ steps.locate.outputs.apk }}
+          if-no-files-found: warn
