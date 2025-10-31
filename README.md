@@ -64,8 +64,9 @@ No secrets or signing keys are required; artifacts are unsigned (debug/release w
 
 - All data is stored locally on the device using Hive.
 - No sensitive information is committed to this public repository.
-- Camera scanning uses `mobile_scanner` and is available on Android/iOS. On Windows, the app offers manual input/paste JSON fallback.
+- Camera scanning uses `mobile_scanner` on Android/iOS and `weebi_barcode_scanner` on Windows/macOS for full cross-platform camera support.
 
 ## Notes
 
-- If you want desktop camera scanning later, we can explore platform-specific camera and decoding support, but the current build prioritizes Android/iOS scanning and Windows offline/manual workflows.
+- Windows and macOS camera scanning is now supported using the `weebi_barcode_scanner` package powered by YOLO object detection and ZXing decoding.
+- Manual input/paste JSON fallback is still available on all platforms as an alternative to camera scanning.

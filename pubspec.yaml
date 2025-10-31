@@ -15,6 +15,7 @@ dependencies:
   csv: ^6.0.0
   http: ^1.2.0
   mobile_scanner: ^6.0.1
+  weebi_barcode_scanner: ^1.7.3
   connectivity_plus: ^6.0.0
 dev_dependencies:
   flutter_test:
