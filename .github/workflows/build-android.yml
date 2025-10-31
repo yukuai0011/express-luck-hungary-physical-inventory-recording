@@ -1,0 +1,71 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+        
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Install NativeScript CLI
+      run: npm install -g @nativescript/cli
+      
+    - name: Create keystore for signing
+      run: |
+        keytool -genkey -v -keystore android.keystore \
+          -alias release -keyalg RSA -keysize 2048 -validity 10000 \
+          -storepass ${{ secrets.KEYSTORE_PASSWORD || 'android' }} \
+          -keypass ${{ secrets.KEY_PASSWORD || 'android' }} \
+          -dname "CN=Express Luck Hungary, OU=Mobile, O=Express Luck, L=Budapest, ST=Hungary, C=HU"
+      
+    - name: Build Android APK (Debug)
+      run: ns build android --release --key-store-path android.keystore --key-store-password ${{ secrets.KEYSTORE_PASSWORD || 'android' }} --key-store-alias release --key-store-alias-password ${{ secrets.KEY_PASSWORD || 'android' }} --copy-to ./output.apk
+      
+    - name: Upload APK artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: inventory-scanner-apk
+        path: |
+          platforms/android/app/build/outputs/apk/release/*.apk
+          output.apk
+        retention-days: 30
+        
+    - name: Create Release
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v1.0.${{ github.run_number }}
+        name: Release v1.0.${{ github.run_number }}
+        files: |
+          platforms/android/app/build/outputs/apk/release/*.apk
+          output.apk
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

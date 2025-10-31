@@ -1,0 +1,9 @@
+node_modules/
+platforms/
+hooks/
+*.js.map
+*.log
+.DS_Store
+*.keystore
+output.apk
+*.apk
