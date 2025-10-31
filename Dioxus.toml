@@ -1,0 +1,7 @@
+[application]
+name = "Inventory Scanner"
+
+[bundle]
+identifier = "com.expressluck.inventory"
+publisher = "Express Luck Hungary"
+icon = []
