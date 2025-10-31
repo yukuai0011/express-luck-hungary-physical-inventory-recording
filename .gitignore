@@ -1,0 +1,14 @@
+# NativeScript build artifacts
+hooks/
+platforms/
+node_modules/
+package-lock.json
+*.log
+
+# Android/Gradle
+.gradle/
+*.apk
+*.aab
+
+# VSCode
+.vscode/

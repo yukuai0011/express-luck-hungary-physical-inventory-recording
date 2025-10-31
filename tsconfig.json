@@ -1,0 +1,12 @@
+{
+  "extends": "@nativescript/tsconfig",
+  "compilerOptions": {
+    "types": ["svelte", "@nativescript/types"],
+    "skipLibCheck": true
+  },
+  "include": [
+    "app/**/*",
+    "references.d.ts",
+    "nativescript.config.ts"
+  ]
+}
