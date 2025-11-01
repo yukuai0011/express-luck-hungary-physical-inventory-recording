@@ -3,7 +3,7 @@ name: Build Android APK (Dioxus)
 on:
   workflow_dispatch:
   push:
-    branches: [ main, master ]
+    branches: [ "**" ]
 
 jobs:
   build-android:
