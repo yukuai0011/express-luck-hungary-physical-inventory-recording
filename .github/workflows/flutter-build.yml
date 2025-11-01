@@ -90,6 +90,28 @@ jobs:
           path: build/windows/**/runner/Release/*.exe
           if-no-files-found: error
 
+      - name: Package Windows portable as ZIP(s)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          if (Test-Path 'build/windows/x64/runner/Release') {
+            Compress-Archive -Path 'build/windows/x64/runner/Release/*' -DestinationPath 'dist/windows-portable-x64.zip' -Force
+          }
+          if (Test-Path 'build/windows/arm64/runner/Release') {
+            Compress-Archive -Path 'build/windows/arm64/runner/Release/*' -DestinationPath 'dist/windows-portable-arm64.zip' -Force
+          }
+          if (Test-Path 'build/windows/runner/Release') {
+            Compress-Archive -Path 'build/windows/runner/Release/*' -DestinationPath 'dist/windows-portable-unknown.zip' -Force
+          }
+
+      - name: Upload Windows portable ZIP(s)
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-portable-zip
+          path: dist/*.zip
+          if-no-files-found: warn
+
   web:
     name: Web (GitHub Pages)
     runs-on: ubuntu-latest
