@@ -1,12 +1,15 @@
 import 'dart:convert';
 import 'dart:io' show Platform; // guard for mobile vs desktop
+import 'dart:io' as io; // for HttpServer on Windows
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 // Boxes / keys
 const String kBoxSettings = 'settings';
@@ -304,14 +307,21 @@ class _HomePageState extends State<HomePage> {
 
   // --- Actions ---
   Future<void> _onScanQr() async {
-    if (!(Platform.isAndroid || Platform.isIOS)) {
-      await _info(context, 'Camera scanning is supported on Android/iOS only. Use Paste JSON.');
+    String? text;
+    if (Platform.isWindows) {
+      text = await Navigator.push<String?>(
+        context,
+        MaterialPageRoute(builder: (_) => const WindowsWebScannerPage(mode: ScanMode.qr)),
+      );
+    } else if (Platform.isAndroid || Platform.isIOS) {
+      text = await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const ScanView(title: 'Scan QR')),
+      );
+    } else {
+      await _info(context, 'Camera scanning is supported on Android/iOS/Windows only. Use Paste JSON.');
       return;
     }
-    String? text = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const ScanView(title: 'Scan QR')),
-    );
     if (text == null || text.isEmpty) return;
     final ok = _handleQrText(text);
     if (!ok && mounted) {
@@ -321,16 +331,23 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _onScanBarcode() async {
-    if (!(Platform.isAndroid || Platform.isIOS)) {
-      await _info(context, 'Camera scanning is supported on Android/iOS only. Type the package number.');
+    String? code;
+    if (Platform.isWindows) {
+      code = await Navigator.push<String?>(
+        context,
+        MaterialPageRoute(builder: (_) => const WindowsWebScannerPage(mode: ScanMode.barcode)),
+      );
+    } else if (Platform.isAndroid || Platform.isIOS) {
+      code = await Navigator.push<String?>(
+        context,
+        MaterialPageRoute(builder: (_) => const ScanView(title: 'Scan Package Barcode')),
+      );
+    } else {
+      await _info(context, 'Camera scanning is supported on Android/iOS/Windows only. Type the package number.');
       return;
     }
-    final code = await Navigator.push<String?>(
-      context,
-      MaterialPageRoute(builder: (_) => const ScanView(title: 'Scan Package Barcode')),
-    );
     if (code != null && code.isNotEmpty) {
-      setState(() => _packageController.text = code.trim());
+      setState(() => _packageController.text = code!.trim());
     }
   }
 
@@ -360,7 +377,7 @@ class _HomePageState extends State<HomePage> {
     if (orderNo.isNotEmpty && location.isNotEmpty && (recNo is num)) {
       _scannedInfo = {
         'orderNo': orderNo,
-        'recordingNo': (recNo as num).toInt(),
+        'recordingNo': recNo.toInt(),
         'locationCode': location,
       };
       return true;
@@ -529,6 +546,115 @@ class ScanView extends StatefulWidget {
 
   @override
   State<ScanView> createState() => _ScanViewState();
+}
+
+/// Scanning mode for the Windows WebView scanner
+enum ScanMode { qr, barcode }
+
+/// Windows-only scanner using a WebView that loads local HTML + ZXing and bridges
+/// the decoded text back to Flutter by intercepting an app:// navigation.
+class WindowsWebScannerPage extends StatefulWidget {
+  final ScanMode mode;
+  const WindowsWebScannerPage({super.key, required this.mode});
+
+  @override
+  State<WindowsWebScannerPage> createState() => _WindowsWebScannerPageState();
+}
+
+class _WindowsWebScannerPageState extends State<WindowsWebScannerPage> {
+  WebViewController? _controller;
+  io.HttpServer? _server;
+  int? _port;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _startServerAndLoad();
+  }
+
+  Future<void> _startServerAndLoad() async {
+    try {
+      // Load assets content
+      final html = await rootBundle.loadString('assets/web_qr/index.html');
+      final js = await rootBundle.loadString('assets/web_qr/app.js');
+      final css = await rootBundle.loadString('assets/web_qr/style.css');
+
+      final server = await io.HttpServer.bind(io.InternetAddress.loopbackIPv4, 0);
+      _server = server;
+      _port = server.port;
+
+      server.listen((req) async {
+        try {
+          final path = req.uri.path;
+          if (path == '/' || path == '/index.html') {
+            req.response.headers.contentType = io.ContentType('text', 'html', charset: 'utf-8');
+            req.response.write(html);
+          } else if (path == '/app.js') {
+            req.response.headers.contentType = io.ContentType('application', 'javascript', charset: 'utf-8');
+            req.response.write(js);
+          } else if (path == '/style.css') {
+            req.response.headers.contentType = io.ContentType('text', 'css', charset: 'utf-8');
+            req.response.write(css);
+          } else {
+            req.response.statusCode = 404;
+            req.response.write('Not found');
+          }
+          await req.response.close();
+        } catch (_) {
+          // ignore
+        }
+      });
+
+      final start = widget.mode == ScanMode.qr ? 'qr' : 'barcode';
+      final url = Uri.parse('http://127.0.0.1:${_port}/index.html?bridge=nav&start=$start');
+
+      final controller = WebViewController()
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..setBackgroundColor(Colors.black)
+        ..setNavigationDelegate(NavigationDelegate(
+          onNavigationRequest: (request) {
+            final uri = Uri.tryParse(request.url);
+            if (uri != null && uri.scheme == 'app' && uri.host == 'scanned') {
+              final text = uri.queryParameters['text'] ?? '';
+              if (mounted) Navigator.of(context).pop(text);
+              return NavigationDecision.prevent;
+            }
+            return NavigationDecision.navigate;
+          },
+        ))
+        ..loadRequest(url);
+
+      if (mounted) setState(() => _controller = controller);
+    } catch (e) {
+      setState(() => _error = 'Failed to start scanner: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _server?.close(force: true);
+    _server = null;
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final title = widget.mode == ScanMode.qr ? 'Scan QR' : 'Scan Package Barcode';
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(title),
+        actions: [
+          IconButton(onPressed: () => Navigator.of(context).maybePop(), icon: const Icon(Icons.close)),
+        ],
+      ),
+      body: _error != null
+          ? Center(child: Text(_error!))
+          : (_controller == null
+              ? const Center(child: CircularProgressIndicator())
+              : WebViewWidget(controller: _controller!)),
+    );
+  }
 }
 
 class _ScanViewState extends State<ScanView> {
