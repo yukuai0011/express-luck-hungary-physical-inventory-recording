@@ -42,7 +42,7 @@ jobs:
           ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
           NDK_HOME: ${{ env.ANDROID_SDK_ROOT }}/ndk/25.2.9519653
         run: |
-          dx bundle --platform android --release
+          dx --platform android bundle --release
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
