@@ -573,7 +573,7 @@ class _ScanViewState extends State<ScanView> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.camera_alt_off, size: 48),
+                  const Icon(Icons.camera_off, size: 48),
                   const SizedBox(height: 12),
                   Text(
                     'Unable to access camera.\n${error.toString()}',
