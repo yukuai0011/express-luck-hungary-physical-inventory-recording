@@ -1,0 +1,22 @@
+[application]
+name = "Inventory Scanner PoC"
+default_platform = "web"
+
+[web]
+app = { title = "Inventory Scanner PoC", base_path = "/" }
+resource = [
+    { path = "assets/style.css", serve = true },
+]
+
+[web.resource.injections]
+style = ["/assets/style.css"]
+scripts = [
+    # ZXing for web-only scanning (CDN). Safe to fail silently on non-web targets.
+    "https://unpkg.com/@zxing/library@0.21.2"
+]
+
+[android]
+# Use default settings; dx will generate a Gradle project under .dioxus
+package_name = "com.expressluck.inventoryscanner"
+label = "Inventory Scanner"
+icon = null

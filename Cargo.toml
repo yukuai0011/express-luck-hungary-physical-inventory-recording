@@ -1,0 +1,33 @@
+[package]
+name = "inventory_scanner_poc"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+dioxus = { version = "=0.7.0", features = ["web", "mobile"] }
+dioxus-document = "=0.7.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# HTTP on native/mobile
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+
+# For web-only fetch and DOM interop
+wasm-bindgen = { version = "0.2", optional = true }
+wasm-bindgen-futures = { version = "0.4", optional = true }
+web-sys = { version = "0.3", features = [
+    "Window", "Document", "HtmlDocument", "Navigator", "MediaDevices",
+    "Request", "RequestInit", "RequestMode", "Response", "Headers",
+    "HtmlElement", "Storage"
+], optional = true }
+gloo-timers = { version = "0.3", features = ["futures"], optional = true }
+
+# Dioxus Primitives (un-styled foundational components) - track main repo for compatibility with 0.7
+dioxus-primitives = { git = "https://github.com/DioxusLabs/components", package = "dioxus-primitives" }
+
+[features]
+default = []
+web = ["wasm-bindgen", "wasm-bindgen-futures", "web-sys", "gloo-timers"]
+
+[package.metadata.dioxus]
+app = { name = "Inventory Scanner PoC" }
