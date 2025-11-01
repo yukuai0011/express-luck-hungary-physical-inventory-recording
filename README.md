@@ -17,7 +17,7 @@ It follows the original PoC flow:
 - Sessions (e.g., daily/warehouse) to group entries
 - Add entries with item code, location, quantity, and remarks
 - Export a session to CSV into your documents folder and download CI artifacts
-- Material 3 UI; works on Android and Windows desktop
+- Material 3 UI; works on Android, iOS, and Web (camera scanning supported on all three). Windows desktop supports manual input.
 
 ## Project layout
 
@@ -64,8 +64,8 @@ No secrets or signing keys are required; artifacts are unsigned (debug/release w
 
 - All data is stored locally on the device using Hive.
 - No sensitive information is committed to this public repository.
-- Camera scanning uses `mobile_scanner` and is available on Android/iOS. On Windows, the app offers manual input/paste JSON fallback.
+- Camera scanning uses `mobile_scanner` and is available on Android, iOS, and Web (served over HTTPS such as GitHub Pages). On Windows desktop, the app offers manual input/paste JSON fallback.
 
 ## Notes
 
-- If you want desktop camera scanning later, we can explore platform-specific camera and decoding support, but the current build prioritizes Android/iOS scanning and Windows offline/manual workflows.
+- If you want desktop camera scanning later, we can explore platform-specific camera and decoding support, but the current build prioritizes Android/iOS/Web scanning and Windows offline/manual workflows.

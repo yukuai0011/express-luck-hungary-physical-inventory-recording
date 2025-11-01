@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io' show Platform; // guard for mobile vs desktop
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -70,6 +69,13 @@ class _HomePageState extends State<HomePage> {
   }
 
   bool get _hasBothScans => _scannedApi != null && _scannedInfo != null;
+
+  bool get _cameraSupported {
+    // Allow camera on Web and on Android/iOS. Use defaultTargetPlatform to avoid importing dart:io.
+    return kIsWeb ||
+        defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -304,8 +310,8 @@ class _HomePageState extends State<HomePage> {
 
   // --- Actions ---
   Future<void> _onScanQr() async {
-    if (!(Platform.isAndroid || Platform.isIOS)) {
-      await _info(context, 'Camera scanning is supported on Android/iOS only. Use Paste JSON.');
+    if (!_cameraSupported) {
+      await _info(context, 'Camera scanning is available on Android, iOS, and the Web. On this platform, please paste JSON.');
       return;
     }
     String? text = await Navigator.push(
@@ -321,8 +327,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _onScanBarcode() async {
-    if (!(Platform.isAndroid || Platform.isIOS)) {
-      await _info(context, 'Camera scanning is supported on Android/iOS only. Type the package number.');
+    if (!_cameraSupported) {
+      await _info(context, 'Camera scanning is available on Android, iOS, and the Web. On this platform, please type the package number.');
       return;
     }
     final code = await Navigator.push<String?>(
@@ -559,6 +565,31 @@ class _ScanViewState extends State<ScanView> {
       ),
       body: MobileScanner(
         controller: _controller,
+        errorBuilder: (context, error, child) {
+          // Provide a friendly message if permissions are denied or no camera is available
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.camera_alt_off, size: 48),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Unable to access camera.\n${error.toString()}',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  if (kIsWeb)
+                    const Text(
+                      'Tip: Use HTTPS (GitHub Pages is OK) and allow camera permission in your browser.',
+                      textAlign: TextAlign.center,
+                    ),
+                ],
+              ),
+            ),
+          );
+        },
         onDetect: (capture) {
           if (_handled) return;
           final codes = capture.barcodes;

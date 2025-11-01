@@ -130,21 +130,8 @@ jobs:
           cp -R build/web/* build/web-pages/
         shell: bash
 
-      - name: Prepare local preview build (adjust base href)
-        run: |
-          mkdir -p build/web-local
-          cp -R build/web/* build/web-local/
-          sed -i 's|<base href="[^"]*"|<base href="./"|' build/web-local/index.html
-        shell: bash
-
       - name: Upload Web (GitHub Pages) artifact
         uses: actions/upload-artifact@v4
         with:
           name: web-dist
           path: build/web-pages/**
-
-      - name: Upload Web (local preview) artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: web-dist-local
-          path: build/web-local/**
