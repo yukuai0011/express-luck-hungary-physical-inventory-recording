@@ -7,6 +7,7 @@ import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:simple_barcode_scanner/simple_barcode_scanner.dart';
 
 // Boxes / keys
 const String kBoxSettings = 'settings';
@@ -304,8 +305,24 @@ class _HomePageState extends State<HomePage> {
 
   // --- Actions ---
   Future<void> _onScanQr() async {
+    if (Platform.isWindows) {
+      var res = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const SimpleBarcodeScannerPage(),
+          ));
+      if (res is String && res != '-1') {
+        final ok = _handleQrText(res);
+        if (!ok && mounted) {
+          _toast('Not JSON or unexpected structure; keep scanning…');
+        }
+        setState(() {});
+      }
+      return;
+    }
+
     if (!(Platform.isAndroid || Platform.isIOS)) {
-      await _info(context, 'Camera scanning is supported on Android/iOS only. Use Paste JSON.');
+      await _info(context, 'Camera scanning is supported on Android/iOS/Windows only. Use Paste JSON.');
       return;
     }
     String? text = await Navigator.push(
@@ -321,8 +338,20 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _onScanBarcode() async {
+    if (Platform.isWindows) {
+      var res = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const SimpleBarcodeScannerPage(),
+          ));
+      if (res is String && res != '-1') {
+        setState(() => _packageController.text = res.trim());
+      }
+      return;
+    }
+
     if (!(Platform.isAndroid || Platform.isIOS)) {
-      await _info(context, 'Camera scanning is supported on Android/iOS only. Type the package number.');
+      await _info(context, 'Camera scanning is supported on Android/iOS/Windows only. Type the package number.');
       return;
     }
     final code = await Navigator.push<String?>(
